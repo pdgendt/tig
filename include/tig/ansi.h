@@ -23,11 +23,22 @@
  * other sequences are recognized so they can be skipped.
  */
 
+/* Colors are COLOR_DEFAULT, an index in the 256-color palette, or an
+ * RGB value flagged with ANSI_COLOR_RGB. */
+#define ANSI_COLOR_RGB		(1 << 24)
+#define ANSI_COLOR_RGB_VALUE(color)	((color) & 0xffffff)
+
 struct ansi_state {
-	int fg;		/* COLOR_DEFAULT or an index in the 256-color palette. */
+	int fg;
 	int bg;
 	int attr;	/* Curses attributes. */
 };
+
+static inline bool
+ansi_color_is_rgb(int color)
+{
+	return color >= ANSI_COLOR_RGB;
+}
 
 #define ANSI_STATE_INIT { COLOR_DEFAULT, COLOR_DEFAULT, A_NORMAL }
 
@@ -47,6 +58,12 @@ const char *ansi_parse(const char *esc, struct ansi_state *state);
 /* Copy @src to @dst without escape sequences. @dst must have room for
  * strlen(src) + 1 bytes. Returns the length of the result. */
 size_t ansi_strip(char *dst, const char *src);
+
+/* Get the RGB value of an index in the 256-color palette (0 to 255). */
+int ansi_color_to_rgb(int color);
+
+/* Map an RGB color to the closest index in the 256-color palette. */
+int ansi_color_to_256(int color);
 
 /* Map an index in the 256-color palette to the closest of the 16
  * basic colors. */

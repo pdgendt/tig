@@ -34,8 +34,15 @@ static enum line_type *color_type;
 static size_t color_types;
 
 static bool colors_enabled;
+static bool colors_direct;
 static int default_fg = COLOR_WHITE;
 static int default_bg = COLOR_BLACK;
+
+/* Extended color pairs take colors beyond the range of a short, as
+ * needed for the RGB values of direct color terminals. */
+#if defined(NCURSES_EXT_COLORS) && NCURSES_EXT_COLORS >= 20170401
+#define HAVE_EXTENDED_PAIRS 1
+#endif
 
 DEFINE_ALLOCATOR(realloc_line_rule, struct line_rule, 8)
 DEFINE_ALLOCATOR(realloc_color_pair, struct line_color_pair, 8)
@@ -212,11 +219,27 @@ foreach_line_rule(line_rule_visitor_fn visitor, void *data)
 /* Color pair IDs are limited to 8 bits by COLOR_PAIR(). */
 #define MAX_COLOR_PAIRS	255
 
+/* Direct color terminals only know the eight basic colors by number and
+ * take RGB values for anything else. */
+static int
+terminal_color(int color)
+{
+	int rgb;
+
+	if (!colors_direct || color == COLOR_DEFAULT || color < 8)
+		return color;
+
+	rgb = ansi_color_is_rgb(color) ? ANSI_COLOR_RGB_VALUE(color)
+				       : ansi_color_to_rgb(color);
+
+	return rgb < 8 ? COLOR_BLACK : rgb;
+}
+
 static bool
 init_line_info_color_pair(struct line_info *info)
 {
-	int bg = info->bg == COLOR_DEFAULT ? default_bg : info->bg;
-	int fg = info->fg == COLOR_DEFAULT ? default_fg : info->fg;
+	int bg = terminal_color(info->bg == COLOR_DEFAULT ? default_bg : info->bg);
+	int fg = terminal_color(info->fg == COLOR_DEFAULT ? default_fg : info->fg);
 	int i;
 
 	for (i = 0; i < color_pairs; i++) {
@@ -235,7 +258,11 @@ init_line_info_color_pair(struct line_info *info)
 	color_pair[color_pairs].fg = info->fg;
 	color_pair[color_pairs].bg = info->bg;
 	info->color_pair = color_pairs++;
+#ifdef HAVE_EXTENDED_PAIRS
+	init_extended_pair(COLOR_ID(info->color_pair), fg, bg);
+#else
 	init_pair(COLOR_ID(info->color_pair), fg, bg);
+#endif
 	return true;
 }
 
@@ -259,8 +286,11 @@ init_colors(void)
 
 	start_color();
 	colors_enabled = true;
+#ifdef HAVE_EXTENDED_PAIRS
+	colors_direct = COLORS >= 1 << 24;
+#endif
 
-	if (assume_default_colors(default_fg, default_bg) == ERR) {
+	if (assume_default_colors(terminal_color(default_fg), terminal_color(default_bg)) == ERR) {
 		default_bg = COLOR_BLACK;
 		default_fg = COLOR_WHITE;
 	}
@@ -275,11 +305,23 @@ init_colors(void)
 	}
 }
 
-/* Reduce a color from the 256-color palette to what the terminal supports. */
+bool
+has_direct_colors(void)
+{
+	return colors_direct;
+}
+
+/* Reduce a color to what the terminal supports. */
 static int
 reduce_color(int color, int *attr)
 {
-	if (color == COLOR_DEFAULT || color < COLORS)
+	if (color == COLOR_DEFAULT || colors_direct)
+		return color;
+
+	if (ansi_color_is_rgb(color))
+		color = ansi_color_to_256(color);
+
+	if (color < COLORS)
 		return color;
 
 	if (color >= 16 && COLORS < 256)

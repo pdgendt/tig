@@ -60,17 +60,17 @@ ansi_color_from_rgb(int r, int g, int b)
 }
 
 int
-ansi_color_to_16(int color)
+ansi_color_to_rgb(int color)
 {
 	int r, g, b;
-	int best = 0;
-	int best_distance = -1;
-	int i;
 
-	if (color < 16)
-		return color;
+	assert(color >= 0 && color < 256);
 
-	if (color >= 232) {
+	if (color < 16) {
+		r = ansi_basic_colors[color][0];
+		g = ansi_basic_colors[color][1];
+		b = ansi_basic_colors[color][2];
+	} else if (color >= 232) {
 		r = g = b = 8 + (color - 232) * 10;
 	} else {
 		color -= 16;
@@ -78,6 +78,33 @@ ansi_color_to_16(int color)
 		g = ansi_cube_levels[(color / 6) % 6];
 		b = ansi_cube_levels[color % 6];
 	}
+
+	return (r << 16) | (g << 8) | b;
+}
+
+int
+ansi_color_to_256(int color)
+{
+	int rgb = ANSI_COLOR_RGB_VALUE(color);
+
+	return ansi_color_from_rgb(rgb >> 16, (rgb >> 8) & 255, rgb & 255);
+}
+
+int
+ansi_color_to_16(int color)
+{
+	int rgb, r, g, b;
+	int best = 0;
+	int best_distance = -1;
+	int i;
+
+	if (color < 16)
+		return color;
+
+	rgb = ansi_color_to_rgb(color);
+	r = rgb >> 16;
+	g = (rgb >> 8) & 255;
+	b = rgb & 255;
 
 	for (i = 0; i < 16; i++) {
 		int dr = r - ansi_basic_colors[i][0];
@@ -118,9 +145,10 @@ ansi_parse_extended_color(const int *args, int count, bool colons, int *color)
 			offset = 2;
 		if (count < offset + 3)
 			return count;
-		*color = ansi_color_from_rgb(MIN(args[offset], 255),
-					     MIN(args[offset + 1], 255),
-					     MIN(args[offset + 2], 255));
+		*color = ANSI_COLOR_RGB
+		       | (MIN(args[offset], 255) << 16)
+		       | (MIN(args[offset + 1], 255) << 8)
+		       | MIN(args[offset + 2], 255);
 		return offset + 3;
 	}
 

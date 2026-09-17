@@ -14,6 +14,7 @@
 #include "tig/tig.h"
 #include "tig/io.h"
 #include "tig/apps.h"
+#include "tig/line.h"
 
 /*
  * general
@@ -97,9 +98,10 @@ app_diff_highlight_path_search(char *dest, size_t destlen, const char *query)
 struct app_external
 *app_diff_highlight_load(const char *query)
 {
-	/* Colors are rendered with the terminal palette, so tell the program
-	 * not to use true colors. */
-	static struct app_external dhlt_app = { { NULL }, { "GIT_CONFIG=/dev/null", "COLORTERM=", NULL } };
+	/* Unless the terminal has direct colors, colors are rendered with the
+	 * terminal palette, so tell the program not to use true colors. */
+	static char colorterm_env[] = "COLORTERM=";
+	static struct app_external dhlt_app = { { NULL }, { "GIT_CONFIG=/dev/null", colorterm_env, NULL } };
 	static bool did_search = false;
 	static char dhlt_query[SIZEOF_STR];
 	static char dhlt_cmd[SIZEOF_STR];
@@ -113,6 +115,8 @@ struct app_external
 
 	if (!query)
 		query = "";
+
+	strcpy(colorterm_env, has_direct_colors() ? "" : "COLORTERM=");
 
 	if (did_search && !strcmp(query, dhlt_query))
 		return &dhlt_app;

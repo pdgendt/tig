@@ -141,6 +141,7 @@ const char *get_line_type_name(enum line_type type);
 struct line_info *get_line_info(const char *prefix, enum line_type type);
 struct line_info *add_line_rule(const char *prefix, struct line_rule *rule);
 void init_colors(void);
+bool has_direct_colors(void);
 
 typedef bool (*line_rule_visitor_fn)(void *data, const struct line_rule *rule);
 bool foreach_line_rule(line_rule_visitor_fn fn, void *data);
