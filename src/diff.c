@@ -464,6 +464,21 @@ diff_save_line(struct view *view, struct diff_state *state, enum open_flags flag
 	}
 }
 
+/* Whether a line in a diff chunk is part of the old or the new file. */
+static bool
+diff_line_has_old(const struct line *line)
+{
+	return line->type != LINE_DIFF_ADD && line->type != LINE_DIFF_ADD2 &&
+	       line->type != LINE_DIFF_NO_NEWLINE;
+}
+
+static bool
+diff_line_has_new(const struct line *line)
+{
+	return line->type != LINE_DIFF_DEL && line->type != LINE_DIFF_DEL2 &&
+	       line->type != LINE_DIFF_NO_NEWLINE;
+}
+
 void
 diff_restore_line(struct view *view, struct diff_state *state)
 {
@@ -497,8 +512,7 @@ diff_restore_line(struct view *view, struct diff_state *state)
 				redraw_view(view);
 				return;
 			}
-			if (line->type != LINE_DIFF_DEL &&
-			    line->type != LINE_DIFF_DEL2)
+			if (diff_line_has_new(line))
 				lineno++;
 		}
 	}
@@ -646,8 +660,7 @@ diff_get_lineno(struct view *view, struct line *line, bool old)
 	lineno = old ? chunk_header.old.position : chunk_header.new.position;
 
 	for (chunk++; chunk < line; chunk++)
-		if (old ? chunk->type != LINE_DIFF_ADD && chunk->type != LINE_DIFF_ADD2
-			: chunk->type != LINE_DIFF_DEL && chunk->type != LINE_DIFF_DEL2)
+		if (old ? diff_line_has_old(chunk) : diff_line_has_new(chunk))
 			lineno++;
 
 	return lineno;
@@ -693,13 +706,8 @@ diff_trace_origin(struct view *view, enum request request, struct line *line)
 	}
 
 	for (chunk += 1; chunk < line; chunk++) {
-		if (chunk->type == LINE_DIFF_ADD) {
-			lineno += chunk_marker == '+';
-		} else if (chunk->type == LINE_DIFF_DEL) {
-			lineno += chunk_marker == '-';
-		} else {
+		if (chunk_marker == '-' ? diff_line_has_old(chunk) : diff_line_has_new(chunk))
 			lineno++;
-		}
 	}
 
 	if (commit_line)
