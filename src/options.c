@@ -149,7 +149,20 @@ diff_prefix_arg()
 const char *
 word_diff_arg()
 {
-	return opt_word_diff ? "--word-diff=plain" : "--word-diff=none";
+	if (opt_word_diff)
+		return "--word-diff=plain";
+
+	/* Git does not show word diffs by default, so only cancel word diff
+	 * options given by the user. Diff highlighting programs may inspect
+	 * the Git command line and change their behavior when a word diff
+	 * option is present. */
+	if (argv_containsn(opt_diff_options, "--word-diff", STRING_SIZE("--word-diff")) ||
+	    argv_containsn(opt_diff_options, "--color-words", STRING_SIZE("--color-words")) ||
+	    argv_containsn(opt_cmdline_args, "--word-diff", STRING_SIZE("--word-diff")) ||
+	    argv_containsn(opt_cmdline_args, "--color-words", STRING_SIZE("--color-words")))
+		return "--word-diff=none";
+
+	return "";
 }
 
 const char *
