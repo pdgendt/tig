@@ -48,6 +48,7 @@ enum status_code diff_init_highlight(struct view *view, struct diff_state *state
 bool diff_done_highlight(struct diff_state *state);
 
 unsigned int diff_get_lineno(struct view *view, struct line *line, bool old);
+bool diff_get_column_data(struct view *view, const struct line *line, struct view_column_data *column_data);
 const char *diff_get_pathname(struct view *view, struct line *line, bool old);
 
 extern struct view diff_view;

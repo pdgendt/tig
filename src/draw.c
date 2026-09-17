@@ -351,7 +351,7 @@ draw_lineno_custom(struct view *view, struct view_column *column, unsigned int l
 	if (!column->opt.line_number.display)
 		return false;
 
-	if (lineno == 1 || (lineno % interval) == 0) {
+	if (lineno && (lineno == 1 || (lineno % interval) == 0)) {
 		static char fmt[] = "%3u";
 
 		fmt[1] = '0' + digits3;
@@ -696,6 +696,14 @@ view_column_draw(struct view *view, struct line *line, unsigned int lineno)
 			continue;
 
 		case VIEW_COLUMN_LINE_NUMBER:
+			/* Diff-like views provide file line numbers, zero
+			 * for lines outside of diff chunks. */
+			if (column->opt.line_number.file && view_has_flags(view, VIEW_DIFF_LIKE)) {
+				if (draw_lineno_custom(view, column,
+						       column_data.line_number ? *column_data.line_number : 0))
+					return true;
+				continue;
+			}
 			/* Avoid corrupting line numbers (which actually are search results)
 			 * in grep mode by special-treating that view. */
 			if (draw_lineno(view, column,

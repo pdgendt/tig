@@ -1,0 +1,79 @@
+#!/bin/sh
+
+. libtest.sh
+. libgit.sh
+
+in_work_dir create_repo_from_tgz "$base_dir/files/scala-js-benchmarks.tgz"
+
+test_case file-line-numbers \
+	--tigrc='set diff-view-line-number = yes,file=yes,interval=1' \
+	--args='show master^' \
+	<<EOF
+   x commit a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff
+   x Author:     Jonas Fonseca <jonas.fonseca@gmail.com>
+   x AuthorDate: Sat Mar 1 15:59:02 2014 -0500
+   x Commit:     Jonas Fonseca <jonas.fonseca@gmail.com>
+   x CommitDate: Sat Mar 1 15:59:02 2014 -0500
+   x
+   x     Add type parameter for js.Dynamic
+   x ---
+   x  common/src/main/scala/org/scalajs/benchmark/Benchmark.scala | 2 +-
+   x  1 file changed, 1 insertion(+), 1 deletion(-)
+   x
+   x diff --git a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala b/
+   x index 65f914a..3aa4320 100644
+   x --- a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
+   x +++ b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
+   x @@ -15,7 +15,7 @@ object Benchmark {
+ 15x    val benchmarks = js.Array[Benchmark]()
+ 16x    val benchmarkApps = js.Array[BenchmarkApp]()
+ 17x
+ 18x -  val global = js.Dynamic.global.asInstanceOf[js.Dictionary]
+ 18x +  val global = js.Dynamic.global.asInstanceOf[js.Dictionary[js.Any]]
+ 19x    global("runScalaJSBenchmarks") = runBenchmarks _
+ 20x    global("initScalaJSBenchmarkApps") = initBenchmarkApps _
+ 21x
+
+
+
+
+[diff] a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff - line 1 of 24              100%
+EOF
+
+test_case file-line-numbers-interval \
+	--tigrc='set diff-view-line-number = yes,file=yes,interval=5' \
+	--args='show master' \
+	--script=':/@@ -53,10' \
+	<<EOF
+   x --- a/project/Build.scala
+   x +++ b/project/Build.scala
+   x @@ -24,11 +24,6 @@ object ScalaJSBenchmarks extends Build {
+   x        )
+ 25x    )
+   x
+   x -  lazy val benchmarkSettings = defaultSettings ++ Seq(
+   x -      unmanagedSources in (Compile, packageJS) +=
+   x -          baseDirectory.value / "exports.js"
+ 30x -  )
+   x -
+   x    lazy val parent: Project = Project(
+   x        id = "parent",
+   x        base = file("."),
+   x @@ -53,10 +48,10 @@ object ScalaJSBenchmarks extends Build {
+   x    )
+   x
+ 50x    lazy val common = project("Common", defaultSettings)
+   x -  lazy val deltablue = project("DeltaBlue", benchmarkSettings).dependsOn(c
+   x -  lazy val richards = project("Richards", benchmarkSettings).dependsOn(com
+   x -  lazy val sudoku = project("Sudoku", benchmarkSettings).dependsOn(common)
+   x -  lazy val tracer = project("Tracer", benchmarkSettings).dependsOn(common)
+   x +  lazy val deltablue = project("DeltaBlue", defaultSettings).dependsOn(com
+   x +  lazy val richards = project("Richards", defaultSettings).dependsOn(commo
+   x +  lazy val sudoku = project("Sudoku", defaultSettings).dependsOn(common)
+   x +  lazy val tracer = project("Tracer", defaultSettings).dependsOn(common)
+ 55x
+   x    def project(id: String, settings: Seq[sbt.Def.Setting[_]]) = Project(
+[diff] Changes to 'project/Build.scala' - line 202 of 367                    58%
+EOF
+
+run_test_cases
