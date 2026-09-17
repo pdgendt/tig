@@ -297,9 +297,12 @@ The following variables can be set:
 	colors, while text with only attributes keeps the colors of the line.
 	The program has no access to the terminal, so programs that detect
 	the terminal background by querying it fall back to their default.
-	The program is run with the `COLORTERM` environment variable cleared
-	since colors are rendered with the terminal palette; true colors
-	emitted anyway are approximated by the 256-color palette. Regions
+	True colors are rendered as is on terminals whose terminfo entry
+	declares direct colors, such as `xterm-direct` and `tmux-direct`,
+	when Tig is built with ncurses 6.1 or later. Elsewhere they are
+	approximated by the 256-color palette, and the program is run with
+	the `COLORTERM` environment variable cleared so that it picks palette
+	colors itself. Regions
 	marked with reverse video on added and removed lines, as done by
 	'diff-highlight', are governed by `color diff-add-highlight` and
 	`color diff-del-highlight`.
@@ -1062,7 +1065,9 @@ Color names::
 	background.
 +
 Colors can also be specified using the keywords *color0*, *color1*, ...,
-*colorN-1* (where *N* is the number of colors supported by your terminal).
+*colorN-1* (where *N* is the number of colors supported by your terminal). On terminals with direct color support, *color8* and above
+are rendered with the colors of the xterm palette rather than with those
+of the terminal theme.
 This is useful when you remap the colors for your display or want to enable
 colors supported by 88-color and 256-color terminals. Note that the 'color'
 prefix is optional. If you prefer, you can specify colors directly by their
