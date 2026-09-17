@@ -21,6 +21,7 @@
 #include "tig/diff.h"
 #include "tig/draw.h"
 #include "tig/apps.h"
+#include "tig/ansi.h"
 
 static enum status_code
 diff_open(struct view *view, enum open_flags flags)
@@ -122,27 +123,21 @@ diff_common_add_line(struct view *view, const char *text, enum line_type type, s
 		return NULL;
 
 	box = line->data;
-	if (context->cells)
+	if (context->cells) {
+		size_t textlen = strlen(box->text);
+		size_t length = 0;
+		size_t i;
+
 		memcpy(box->cell, context->cell, sizeof(struct box_cell) * context->cells);
+		/* The stored text may be shorter, e.g. without a trailing tab. */
+		for (i = 0; i < context->cells; i++) {
+			if (length + box->cell[i].length > textlen)
+				box->cell[i].length = textlen - length;
+			length += box->cell[i].length;
+		}
+	}
 	box->cells = context->cells;
 	return line;
-}
-
-static bool
-diff_common_add_cell_until(struct diff_stat_context *context, const char *s, enum line_type next_type)
-{
-	const char *sep = strstr(context->text, s);
-
-	if (sep == NULL)
-		return false;
-
-	if (!diff_common_add_cell(context, sep - context->text, false))
-		return false;
-
-	context->text = sep + (context->skip ? strlen(s) : 0);
-	context->type = next_type;
-
-	return true;
 }
 
 static bool
@@ -285,27 +280,86 @@ diff_common_read_diff_wdiff(struct view *view, const char *text)
 	return diff_common_add_line(view, text, LINE_DEFAULT, &context);
 }
 
-static bool
-diff_common_highlight(struct view *view, const char *text, enum line_type type)
+static enum line_type
+diff_common_ansi_type(struct view *view, enum line_type type, const struct ansi_state *state)
 {
-	struct diff_stat_context context = { text, type, true };
-	enum line_type hi_type = type == LINE_DIFF_ADD
-				 ? LINE_DIFF_ADD_HIGHLIGHT : LINE_DIFF_DEL_HIGHLIGHT;
-	const char *codes[] = { "\x1b[7m", "\x1b[27m" };
-	const enum line_type types[] = { hi_type, type };
-	int i;
+	const struct line_info *info;
+	int fg, bg, attr;
 
-	for (i = 0; diff_common_add_cell_until(&context, codes[i], types[i]); i = (i + 1) % 2)
-		;
+	if (ansi_state_is_default(state))
+		return type;
 
-	diff_common_add_cell(&context, strlen(context.text), true);
-	return diff_common_add_line(view, text, type, &context);
+	/* Reverse video alone is how diff-highlight marks changed regions. */
+	if (state->attr == A_REVERSE &&
+	    state->fg == COLOR_DEFAULT && state->bg == COLOR_DEFAULT) {
+		if (type == LINE_DIFF_ADD)
+			return LINE_DIFF_ADD_HIGHLIGHT;
+		if (type == LINE_DIFF_DEL)
+			return LINE_DIFF_DEL_HIGHLIGHT;
+	}
+
+	info = get_line_info(view->keymap->name, type);
+	fg = state->fg == COLOR_DEFAULT ? info->fg : state->fg;
+	bg = state->bg == COLOR_DEFAULT ? info->bg : state->bg;
+	attr = info->attr | state->attr;
+
+	return get_line_type_from_color(fg, bg, attr, type);
 }
 
-bool
-diff_common_read(struct view *view, const char *data, struct diff_state *state)
+/* Split a line into cells at its ANSI escape sequences. @raw is the text
+ * with escape sequences and @context->text the same text without them.
+ * The first @drop visible bytes are not part of any cell. */
+static bool
+diff_common_add_ansi_cells(struct view *view, struct diff_stat_context *context,
+			   const char *raw, enum line_type type, size_t drop)
+{
+	struct ansi_state state = ANSI_STATE_INIT;
+	size_t length = 0;
+
+	context->type = type;
+
+	while (*raw) {
+		if (*raw == '\033') {
+			if (length && !diff_common_add_cell(context, length, false))
+				return false;
+			context->text += length;
+			length = 0;
+			raw = ansi_parse(raw, &state);
+			context->type = diff_common_ansi_type(view, type, &state);
+		} else if (drop) {
+			drop--;
+			raw++;
+		} else {
+			length++;
+			raw++;
+		}
+	}
+
+	if (!diff_common_add_cell(context, length, context->cells == 0))
+		return false;
+	context->text += length;
+	return true;
+}
+
+static bool
+diff_common_read_ansi(struct view *view, const char *raw, const char *text,
+		      enum line_type type, size_t drop)
+{
+	struct diff_stat_context context = { text, type };
+
+	if (!diff_common_add_ansi_cells(view, &context, raw, type, drop))
+		return false;
+
+	return diff_common_add_line(view, text, type, &context) != NULL;
+}
+
+static bool
+diff_common_read_line(struct view *view, const char *raw, const char *data,
+		      struct diff_state *state)
 {
 	enum line_type type = get_line_type(data);
+	bool has_ansi = raw != data;
+	size_t drop = 0;
 
 	/* ADD2 and DEL2 are only valid in combined diff hunks */
 	if (!state->combined_diff && (type == LINE_DIFF_ADD2 || type == LINE_DIFF_DEL2))
@@ -380,13 +434,35 @@ diff_common_read(struct view *view, const char *data, struct diff_state *state)
 		return diff_common_read_diff_wdiff(view, data);
 
 	if (!opt_diff_indicator && state->reading_diff_chunk &&
-	    !state->stage)
-		data += state->parents;
+	    !state->stage) {
+		while (drop < state->parents && data[drop])
+			drop++;
+		data += drop;
+	}
 
-	if (state->highlight && strchr(data, 0x1b))
-		return diff_common_highlight(view, data, type);
+	/* Commit lines are left to pager_common_read() so refs are added. */
+	if (has_ansi && type != LINE_COMMIT)
+		return diff_common_read_ansi(view, raw, data, type, drop);
 
 	return pager_common_read(view, data, type, NULL);
+}
+
+bool
+diff_common_read(struct view *view, const char *data, struct diff_state *state)
+{
+	char *stripped = NULL;
+	bool ok;
+
+	if (strchr(data, '\033')) {
+		stripped = malloc(strlen(data) + 1);
+		if (!stripped)
+			return false;
+		ansi_strip(stripped, data);
+	}
+
+	ok = diff_common_read_line(view, data, stripped ? stripped : data, state);
+	free(stripped);
+	return ok;
 }
 
 static bool

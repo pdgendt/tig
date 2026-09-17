@@ -1,0 +1,247 @@
+#!/bin/sh
+
+. libtest.sh
+. libgit.sh
+
+in_work_dir create_repo_from_tgz "$base_dir/files/scala-js-benchmarks.tgz"
+
+# Color the diff like Git and various diff filters do: sequences before
+# the diff markers, 16 colors, bold, erase-to-end-of-line, true colors,
+# reverse video, a hyperlink and a reset without parameters.
+file bin/diff-highlight <<'EOF'
+#!/bin/sh
+ESC="$(printf '\033')"
+BEL="$(printf '\a')"
+exec sed \
+	-e "s/^\(@@.*@@\)\(.*\)$/${ESC}[36m\1${ESC}[m\2/" \
+	-e "s/^+\(.*\)$/${ESC}[32m+${ESC}[m${ESC}[32m\1${ESC}[0K${ESC}[m/" \
+	-e "s/^-\(.*\)$/${ESC}[31;1m-\1${ESC}[22;39m/" \
+	-e "s/js\.Any/${ESC}[38;2;190;132;255mjs.Any${ESC}[39m/" \
+	-e "s/asInstanceOf/${ESC}[7masInstanceOf${ESC}[27m/" \
+	-e "s|benchmarks = |${ESC}]8;;http://example.com${BEL}benchmarks${ESC}]8;;${BEL} = |" \
+	-e "s/^index/${ESC}[1mindex/"
+EOF
+chmod +x bin/diff-highlight
+
+test_case ansi-color \
+	--tigrc='set diff-highlight = true' \
+	--args='show master^' \
+	--script=':save-view ansi-color.view' \
+	<<EOF
+commit a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff
+Author:     Jonas Fonseca <jonas.fonseca@gmail.com>
+AuthorDate: Sat Mar 1 15:59:02 2014 -0500
+Commit:     Jonas Fonseca <jonas.fonseca@gmail.com>
+CommitDate: Sat Mar 1 15:59:02 2014 -0500
+
+    Add type parameter for js.Dynamic
+---
+ common/src/main/scala/org/scalajs/benchmark/Benchmark.scala | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala b/commo
+index 65f914a..3aa4320 100644
+--- a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
++++ b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
+@@ -15,7 +15,7 @@ object Benchmark {
+   val benchmarks = js.Array[Benchmark]()
+   val benchmarkApps = js.Array[BenchmarkApp]()
+
+-  val global = js.Dynamic.global.asInstanceOf[js.Dictionary]
++  val global = js.Dynamic.global.asInstanceOf[js.Dictionary[js.Any]]
+   global("runScalaJSBenchmarks") = runBenchmarks _
+   global("initScalaJSBenchmarkApps") = initBenchmarkApps _
+
+
+
+
+
+[diff] a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff - line 1 of 24              100%
+EOF
+
+test_case ansi-color-no-indicator \
+	--tigrc='set diff-highlight = true' \
+	--before='printf "\nset diff-indicator = no\n" >> "$HOME/.tigrc"' \
+	--args='show master^' \
+	--script=':save-view ansi-color-no-indicator.view' \
+	<<EOF
+commit a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff
+Author:     Jonas Fonseca <jonas.fonseca@gmail.com>
+AuthorDate: Sat Mar 1 15:59:02 2014 -0500
+Commit:     Jonas Fonseca <jonas.fonseca@gmail.com>
+CommitDate: Sat Mar 1 15:59:02 2014 -0500
+
+    Add type parameter for js.Dynamic
+---
+ common/src/main/scala/org/scalajs/benchmark/Benchmark.scala | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala b/commo
+index 65f914a..3aa4320 100644
+--- a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
++++ b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
+@@ -15,7 +15,7 @@ object Benchmark {
+  val benchmarks = js.Array[Benchmark]()
+  val benchmarkApps = js.Array[BenchmarkApp]()
+
+  val global = js.Dynamic.global.asInstanceOf[js.Dictionary]
+  val global = js.Dynamic.global.asInstanceOf[js.Dictionary[js.Any]]
+  global("runScalaJSBenchmarks") = runBenchmarks _
+  global("initScalaJSBenchmarkApps") = initBenchmarkApps _
+
+
+
+
+
+[diff] a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff - line 1 of 24              100%
+EOF
+
+test_case ansi-color-save-options \
+	--tigrc='set diff-highlight = true' \
+	--args='show master^' \
+	--script=':save-options ansi-color.tigrc' \
+	--after='if grep -q "^color  " "$HOME/ansi-color.tigrc"; then echo blank; else echo none; fi > "$HOME/ansi-color.blank-colors"' \
+	--assert-equals='ansi-color.blank-colors=none' \
+	<<EOF
+commit a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff
+Author:     Jonas Fonseca <jonas.fonseca@gmail.com>
+AuthorDate: Sat Mar 1 15:59:02 2014 -0500
+Commit:     Jonas Fonseca <jonas.fonseca@gmail.com>
+CommitDate: Sat Mar 1 15:59:02 2014 -0500
+
+    Add type parameter for js.Dynamic
+---
+ common/src/main/scala/org/scalajs/benchmark/Benchmark.scala | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala b/commo
+index 65f914a..3aa4320 100644
+--- a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
++++ b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
+@@ -15,7 +15,7 @@ object Benchmark {
+   val benchmarks = js.Array[Benchmark]()
+   val benchmarkApps = js.Array[BenchmarkApp]()
+
+-  val global = js.Dynamic.global.asInstanceOf[js.Dictionary]
++  val global = js.Dynamic.global.asInstanceOf[js.Dictionary[js.Any]]
+   global("runScalaJSBenchmarks") = runBenchmarks _
+   global("initScalaJSBenchmarkApps") = initBenchmarkApps _
+
+
+
+
+
+[diff] a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff - line 1 of 24              100%
+EOF
+
+run_test_cases
+
+assert_equals 'ansi-color.view' <<EOF
+View: diff
+Ref: a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff
+Dimensions: height=28 width=80
+Position: offset=0 column=0 lineno=0
+line[  0] type=commit selected=1
+line[  0] cells=1 text=[commit a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff]
+line[  1] type= selected=0
+line[  1] cells=1 text=[Author:     Jonas Fonseca <jonas.fonseca@gmail.com>]
+line[  2] type= selected=0
+line[  2] cells=1 text=[AuthorDate: Sat Mar 1 15:59:02 2014 -0500]
+line[  3] type= selected=0
+line[  3] cells=1 text=[Commit:     Jonas Fonseca <jonas.fonseca@gmail.com>]
+line[  4] type= selected=0
+line[  4] cells=1 text=[CommitDate: Sat Mar 1 15:59:02 2014 -0500]
+line[  5] type=default selected=0
+line[  5] cells=1 text=[]
+line[  6] type=default selected=0
+line[  6] cells=1 text=[    Add type parameter for js.Dynamic]
+line[  7] type=diff-start selected=0
+line[  7] cells=1 text=[---]
+line[  8] type=diff-stat selected=0
+line[  8] cells=4 text=[ common/src/main/scala/org/scalajs/benchmark/Benchmark.scala ][| 2 ][+][-]
+line[  9] type=default selected=0
+line[  9] cells=1 text=[ 1 file changed, 1 insertion(+), 1 deletion(-)]
+line[ 10] type=default selected=0
+line[ 10] cells=1 text=[]
+line[ 11] type=diff-header selected=0
+line[ 11] cells=1 text=[diff --git a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala]
+line[ 12] type=diff-index selected=0
+line[ 12] cells=1 text=[index 65f914a..3aa4320 100644]
+line[ 13] type=diff-del-file selected=0
+line[ 13] cells=1 text=[--- a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala]
+line[ 14] type=diff-add-file selected=0
+line[ 14] cells=2 text=[+][++ b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala]
+line[ 15] type=diff-chunk selected=0
+line[ 15] cells=2 text=[@@ -15,7 +15,7 @@][ object Benchmark {]
+line[ 16] type=default selected=0
+line[ 16] cells=3 text=[   val ][benchmarks][ = js.Array[Benchmark]()]
+line[ 17] type=default selected=0
+line[ 17] cells=1 text=[   val benchmarkApps = js.Array[BenchmarkApp]()]
+line[ 18] type=default selected=0
+line[ 18] cells=1 text=[ ]
+line[ 19] type=diff-del selected=0
+line[ 19] cells=3 text=[-  val global = js.Dynamic.global.][asInstanceOf][[js.Dictionary]]
+line[ 20] type=diff-add selected=0
+line[ 20] cells=6 text=[+][  val global = js.Dynamic.global.][asInstanceOf][[js.Dictionary[][js.Any][]]]
+line[ 21] type=default selected=0
+line[ 21] cells=1 text=[   global("runScalaJSBenchmarks") = runBenchmarks _]
+line[ 22] type=default selected=0
+line[ 22] cells=1 text=[   global("initScalaJSBenchmarkApps") = initBenchmarkApps _]
+line[ 23] type=default selected=0
+line[ 23] cells=1 text=[ ]
+EOF
+
+assert_equals 'ansi-color-no-indicator.view' <<EOF
+View: diff
+Ref: a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff
+Dimensions: height=28 width=80
+Position: offset=0 column=0 lineno=0
+line[  0] type=commit selected=1
+line[  0] cells=1 text=[commit a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff]
+line[  1] type= selected=0
+line[  1] cells=1 text=[Author:     Jonas Fonseca <jonas.fonseca@gmail.com>]
+line[  2] type= selected=0
+line[  2] cells=1 text=[AuthorDate: Sat Mar 1 15:59:02 2014 -0500]
+line[  3] type= selected=0
+line[  3] cells=1 text=[Commit:     Jonas Fonseca <jonas.fonseca@gmail.com>]
+line[  4] type= selected=0
+line[  4] cells=1 text=[CommitDate: Sat Mar 1 15:59:02 2014 -0500]
+line[  5] type=default selected=0
+line[  5] cells=1 text=[]
+line[  6] type=default selected=0
+line[  6] cells=1 text=[    Add type parameter for js.Dynamic]
+line[  7] type=diff-start selected=0
+line[  7] cells=1 text=[---]
+line[  8] type=diff-stat selected=0
+line[  8] cells=4 text=[ common/src/main/scala/org/scalajs/benchmark/Benchmark.scala ][| 2 ][+][-]
+line[  9] type=default selected=0
+line[  9] cells=1 text=[ 1 file changed, 1 insertion(+), 1 deletion(-)]
+line[ 10] type=default selected=0
+line[ 10] cells=1 text=[]
+line[ 11] type=diff-header selected=0
+line[ 11] cells=1 text=[diff --git a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala]
+line[ 12] type=diff-index selected=0
+line[ 12] cells=1 text=[index 65f914a..3aa4320 100644]
+line[ 13] type=diff-del-file selected=0
+line[ 13] cells=1 text=[--- a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala]
+line[ 14] type=diff-add-file selected=0
+line[ 14] cells=2 text=[+][++ b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala]
+line[ 15] type=diff-chunk selected=0
+line[ 15] cells=2 text=[@@ -15,7 +15,7 @@][ object Benchmark {]
+line[ 16] type=default selected=0
+line[ 16] cells=3 text=[  val ][benchmarks][ = js.Array[Benchmark]()]
+line[ 17] type=default selected=0
+line[ 17] cells=1 text=[  val benchmarkApps = js.Array[BenchmarkApp]()]
+line[ 18] type=default selected=0
+line[ 18] cells=1 text=[]
+line[ 19] type=diff-del selected=0
+line[ 19] cells=3 text=[  val global = js.Dynamic.global.][asInstanceOf][[js.Dictionary]]
+line[ 20] type=diff-add selected=0
+line[ 20] cells=5 text=[  val global = js.Dynamic.global.][asInstanceOf][[js.Dictionary[][js.Any][]]]
+line[ 21] type=default selected=0
+line[ 21] cells=1 text=[  global("runScalaJSBenchmarks") = runBenchmarks _]
+line[ 22] type=default selected=0
+line[ 22] cells=1 text=[  global("initScalaJSBenchmarkApps") = initBenchmarkApps _]
+line[ 23] type=default selected=0
+line[ 23] cells=1 text=[]
+EOF

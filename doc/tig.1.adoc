@@ -120,7 +120,8 @@ $ git reflog --pretty=raw | tig --pretty=raw
 When no subcommands nor options are given, the pager view will be used for
 displaying the Git command input given on stdin. The pager view assumes the
 input is either from git-log(1) or git-diff(1) and will highlight it similar to
-the log and diff views. For example:
+the log and diff views. ANSI colors in the input, e.g. from `--color=always`,
+are rendered. For example:
 
 -----------------------------------------------------------------------------
 $ git log -Schange -p --raw | tig

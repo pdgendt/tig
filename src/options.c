@@ -1390,6 +1390,10 @@ save_option_color(void *data, const struct line_rule *rule)
 	FILE *file = data;
 	const struct line_info *info;
 
+	/* Skip line types created on demand for ANSI colors. */
+	if (!*rule->name && !*rule->line && !rule->regex)
+		return true;
+
 	for (info = &rule->info; info; info = info->next) {
 		const char *prefix = info->prefix ? info->prefix : "";
 		const char *prefix_sep = info->prefix ? "." : "";
