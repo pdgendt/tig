@@ -42,7 +42,11 @@ static const enum line_type palette_colors[] = {
 static inline void
 set_view_attr(struct view *view, enum line_type type)
 {
-	if (!view->curline->selected && view->curtype != type) {
+	/* LINE_NONE is used both as the initial type of a line and as the
+	 * type of the first custom line rule, so always apply attributes
+	 * for the latter. */
+	if (!view->curline->selected &&
+	    (view->curtype != type || view->curtype == LINE_NONE)) {
 		(void) wattrset(view->win, get_view_attr(view, type));
 		wchgat(view->win, -1, 0, get_view_color(view, type), NULL);
 #if defined(NCURSES_VERSION_PATCH) && NCURSES_VERSION_PATCH < 20061217
