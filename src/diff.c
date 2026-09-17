@@ -343,6 +343,14 @@ diff_side_by_side_add_cells(struct diff_state *state, struct diff_stat_context *
 	return diff_common_add_cell(context, strlen(text), true);
 }
 
+/* Rules are drawn with joints depending on the rows around them. */
+static void
+diff_side_by_side_redraw_rule(struct view *view)
+{
+	if (view->lines >= 2 && view->line[view->lines - 2].type == LINE_SIDE_BY_SIDE)
+		view->line[view->lines - 2].dirty = 1;
+}
+
 static bool
 diff_side_by_side_add_row(struct view *view, struct diff_state *state,
 			  const char *old, const char *new, enum line_type type)
@@ -376,6 +384,7 @@ diff_side_by_side_add_row(struct view *view, struct diff_state *state,
 		return false;
 
 	line->side_by_side = 1;
+	diff_side_by_side_redraw_rule(view);
 	return true;
 }
 
@@ -461,6 +470,20 @@ diff_side_by_side_read(struct view *view, const char *data, enum line_type type,
 	return true;
 }
 
+/* Add a horizontal rule spanning both columns. */
+static bool
+diff_side_by_side_add_rule(struct view *view)
+{
+	struct line *line = add_line_text(view, "", LINE_SIDE_BY_SIDE);
+
+	if (!line)
+		return false;
+
+	line->side_by_side = 1;
+	diff_side_by_side_redraw_rule(view);
+	return true;
+}
+
 static void
 diff_done(struct view *view)
 {
@@ -520,17 +543,27 @@ diff_common_read(struct view *view, const char *data, struct diff_state *state)
 	}
 
 	if (type == LINE_DIFF_HEADER) {
+		/* Combined diffs are shown unified and get no rules. */
+		bool combined = !prefixcmp(data, "diff --cc ") ||
+				!prefixcmp(data, "diff --combined ");
+
 		state->after_diff = true;
 		state->reading_diff_chunk = false;
+		if (state->side_by_side && !combined && !diff_side_by_side_add_rule(view))
+			return false;
 
 	} else if (type == LINE_DIFF_CHUNK) {
 		const unsigned int len = chunk_header_marker_length(data);
 		const char *context = strstr(data + len, "@@");
-		struct line *line =
-			context ? add_line_text_at(view, view->lines, data, LINE_DIFF_CHUNK, len)
-				: NULL;
+		/* Combined diffs are shown unified and get no rules. */
+		bool rules = state->side_by_side && len == 2;
+		struct line *line;
 		struct box *box;
 
+		if (!context || (rules && !diff_side_by_side_add_rule(view)))
+			return false;
+
+		line = add_line_text_at(view, view->lines, data, LINE_DIFF_CHUNK, len);
 		if (!line)
 			return false;
 
@@ -541,7 +574,7 @@ diff_common_read(struct view *view, const char *data, struct diff_state *state)
 		state->combined_diff = (len > 2);
 		state->parents = len - 1;
 		state->reading_diff_chunk = true;
-		return true;
+		return !rules || diff_side_by_side_add_rule(view);
 
 	} else if (type == LINE_COMMIT) {
 		state->reading_diff_chunk = false;
@@ -643,7 +676,7 @@ static bool
 diff_line_has_old(const struct line *line)
 {
 	return line->type != LINE_DIFF_ADD && line->type != LINE_DIFF_ADD2 &&
-	       line->type != LINE_DIFF_NO_NEWLINE;
+	       line->type != LINE_DIFF_NO_NEWLINE && line->type != LINE_SIDE_BY_SIDE;
 }
 
 /* Whether a side-by-side row shows both a removed and an added line. */
@@ -659,7 +692,7 @@ diff_line_has_new(const struct line *line)
 {
 	return diff_line_is_pair(line) ||
 	       (line->type != LINE_DIFF_DEL && line->type != LINE_DIFF_DEL2 &&
-		line->type != LINE_DIFF_NO_NEWLINE);
+		line->type != LINE_DIFF_NO_NEWLINE && line->type != LINE_SIDE_BY_SIDE);
 }
 
 void
@@ -688,6 +721,7 @@ diff_restore_line(struct view *view, struct diff_state *state)
 
 		for (line++; view_has_line(view, line) && line->type != LINE_DIFF_CHUNK; line++) {
 			if (lineno == state->lineno &&
+			    line->type != LINE_SIDE_BY_SIDE &&
 			    line->type != LINE_DIFF_NO_NEWLINE) {
 				unsigned long lineno = line - view->line;
 				unsigned long offset = lineno - (state->pos.lineno - state->pos.offset);
@@ -871,7 +905,8 @@ diff_trace_origin(struct view *view, enum request request, struct line *line)
 	struct blame_header header;
 	struct blame_commit commit;
 
-	if (!diff || !chunk || chunk == line || diff < commit_line) {
+	if (!diff || !chunk || chunk == line || diff < commit_line ||
+	    line->type == LINE_SIDE_BY_SIDE) {
 		report("The line to trace must be inside a diff chunk");
 		return REQ_NONE;
 	}
@@ -1033,6 +1068,11 @@ diff_request(struct view *view, enum request request, struct line *line)
 void
 diff_common_select(struct view *view, struct line *line, const char *changes_msg)
 {
+	/* The rule above a file header belongs to that file. */
+	if (line->type == LINE_SIDE_BY_SIDE && view_has_line(view, line + 1) &&
+	    line[1].type == LINE_DIFF_HEADER)
+		line++;
+
 	if (line->type == LINE_DIFF_STAT) {
 		struct line *header = diff_find_header_from_stat(view, line);
 		if (header) {

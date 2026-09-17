@@ -12,7 +12,7 @@ EOF
 
 steps '
 	:save-display default.screen
-	:20
+	:23
 	:scroll-right
 	:save-display scrolled.screen
 	:scroll-first-col
@@ -51,11 +51,14 @@ CommitDate: Sat Mar 1 15:59:02 2014 -0500
  common/src/main/scala/org/scalajs/benchmark/Benchmark.scala | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
+--------------------------------------------------------------------------------
 diff --git a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala b/commo
 index 65f914a..3aa4320 100644
 --- a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
 +++ b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
+--------------------------------------------------------------------------------
 @@ -15,7 +15,7 @@ object Benchmark {
+---------------------------------------+----------------------------------------
    val benchmarks = js.Array[Benchmark~|   val benchmarks = js.Array[Benchmark]~
    val benchmarkApps = js.Array[Benchm~|   val benchmarkApps = js.Array[Benchma~
                                        |
@@ -65,10 +68,7 @@ index 65f914a..3aa4320 100644
                                        |
 
 
-
-
-
-[diff] a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff - line 1 of 23              100%
+[diff] a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff - line 1 of 26              100%
 EOF
 
 assert_equals 'scrolled.screen' <<EOF
@@ -83,11 +83,14 @@ assert_equals 'scrolled.screen' <<EOF
 mark/Benchmark.scala | 2 +-
 ion(-)
 
+--------------------------------------------------------------------------------
 calajs/benchmark/Benchmark.scala b/common/src/main/scala/org/scalajs/benchmark/B
 
 benchmark/Benchmark.scala
 benchmark/Benchmark.scala
+--------------------------------------------------------------------------------
 
+---------------------------------------+----------------------------------------
 )                                      |)
 kApp]()                                |kApp]()
                                        |
@@ -97,9 +100,6 @@ initBenchmarkApps _                    |initBenchmarkApps _
                                        |
 
 
-
-
-
 [diff] Changes to 'common/src/main/scala/org/scalajs/benchmark/Benchmark.sc 100%
 EOF
 
@@ -107,7 +107,7 @@ assert_equals 'side-by-side.view' <<EOF
 View: diff
 Ref: Changes to 'common/src/main/scala/org/scalajs/benchmark/Benchmark.scala'
 Dimensions: height=28 width=80
-Position: offset=0 column=0 lineno=19
+Position: offset=0 column=0 lineno=22
 line[  0] type=commit selected=0
 line[  0] cells=1 text=[commit a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff]
 line[  1] type= selected=0
@@ -130,39 +130,40 @@ line[  9] type=default selected=0
 line[  9] cells=1 text=[ 1 file changed, 1 insertion(+), 1 deletion(-)]
 line[ 10] type=default selected=0
 line[ 10] cells=1 text=[]
-line[ 11] type=diff-header selected=0
-line[ 11] cells=1 text=[diff --git a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala]
-line[ 12] type=diff-index selected=0
-line[ 12] cells=1 text=[index 65f914a..3aa4320 100644]
-line[ 13] type=diff-del-file selected=0
-line[ 13] cells=1 text=[--- a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala]
-line[ 14] type=diff-add-file selected=0
-line[ 14] cells=1 text=[+++ b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala]
-line[ 15] type=diff-chunk selected=0
-line[ 15] cells=2 text=[@@ -15,7 +15,7 @@][ object Benchmark {]
-line[ 16] type=default selected=0
-line[ 16] cells=1 text=[   val benchmarks = js.Array[Benchmark]()]
-line[ 17] type=default selected=0
-line[ 17] cells=1 text=[   val benchmarkApps = js.Array[BenchmarkApp]()]
-line[ 18] type=default selected=0
-line[ 18] cells=1 text=[ ]
-line[ 19] type=diff-del selected=1
-line[ 19] cells=3 text=[-  val global = js.Dynamic.global.asInstanceOf[js.Dictionary]][
-][+  val global = js.Dynamic.global.asInstanceOf[js.Dictionary[js.Any]]]
+line[ 11] type=side-by-side selected=0
+line[ 11] cells=1 text=[]
+line[ 12] type=diff-header selected=0
+line[ 12] cells=1 text=[diff --git a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala]
+line[ 13] type=diff-index selected=0
+line[ 13] cells=1 text=[index 65f914a..3aa4320 100644]
+line[ 14] type=diff-del-file selected=0
+line[ 14] cells=1 text=[--- a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala]
+line[ 15] type=diff-add-file selected=0
+line[ 15] cells=1 text=[+++ b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala]
+line[ 16] type=side-by-side selected=0
+line[ 16] cells=1 text=[]
+line[ 17] type=diff-chunk selected=0
+line[ 17] cells=2 text=[@@ -15,7 +15,7 @@][ object Benchmark {]
+line[ 18] type=side-by-side selected=0
+line[ 18] cells=1 text=[]
+line[ 19] type=default selected=0
+line[ 19] cells=1 text=[   val benchmarks = js.Array[Benchmark]()]
 line[ 20] type=default selected=0
-line[ 20] cells=1 text=[   global("runScalaJSBenchmarks") = runBenchmarks _]
+line[ 20] cells=1 text=[   val benchmarkApps = js.Array[BenchmarkApp]()]
 line[ 21] type=default selected=0
-line[ 21] cells=1 text=[   global("initScalaJSBenchmarkApps") = initBenchmarkApps _]
-line[ 22] type=default selected=0
-line[ 22] cells=1 text=[ ]
+line[ 21] cells=1 text=[ ]
+line[ 22] type=diff-del selected=1
+line[ 22] cells=3 text=[-  val global = js.Dynamic.global.asInstanceOf[js.Dictionary]][
+][+  val global = js.Dynamic.global.asInstanceOf[js.Dictionary[js.Any]]]
+line[ 23] type=default selected=0
+line[ 23] cells=1 text=[   global("runScalaJSBenchmarks") = runBenchmarks _]
+line[ 24] type=default selected=0
+line[ 24] cells=1 text=[   global("initScalaJSBenchmarkApps") = initBenchmarkApps _]
+line[ 25] type=default selected=0
+line[ 25] cells=1 text=[ ]
 EOF
 
 assert_equals 'unified.screen' <<EOF
-commit a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff
-Author:     Jonas Fonseca <jonas.fonseca@gmail.com>
-AuthorDate: Sat Mar 1 15:59:02 2014 -0500
-Commit:     Jonas Fonseca <jonas.fonseca@gmail.com>
-CommitDate: Sat Mar 1 15:59:02 2014 -0500
 
     Add type parameter for js.Dynamic
 ---
@@ -186,6 +187,11 @@ index 65f914a..3aa4320 100644
 
 
 
+
+
+
+
+
 [diff] Changes to 'common/src/main/scala/org/scalajs/benchmark/Benchmark.sc 100%
 EOF
 
@@ -195,8 +201,8 @@ assert_equals 'editor.log' <<EOF
 EOF
 
 assert_equals 'positions' <<EOF
-unified: offset=0 column=0 lineno=19
-restored: offset=0 column=0 lineno=19
-search: offset=0 column=0 lineno=19
-enter: offset=0 column=0 lineno=11
+unified: offset=5 column=0 lineno=19
+restored: offset=8 column=0 lineno=22
+search: offset=8 column=0 lineno=22
+enter: offset=8 column=0 lineno=12
 EOF

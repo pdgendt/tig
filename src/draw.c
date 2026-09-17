@@ -538,6 +538,43 @@ draw_side_by_side_column(struct view *view, const struct box *box, size_t first,
 	view->col = view->pos.col + start + width;
 }
 
+/* Draw a horizontal rule spanning both columns, joined with the
+ * separator of any adjacent two column row. */
+static void
+draw_side_by_side_rule(struct view *view, struct line *line, unsigned long origin,
+		       int avail, int left_width)
+{
+	struct line *prev = line > view->line ? line - 1 : NULL;
+	struct line *next = line + 1 < view->line + view->lines ? line + 1 : NULL;
+	bool above = prev && prev->side_by_side && prev->type != LINE_SIDE_BY_SIDE;
+	bool below = next && next->side_by_side && next->type != LINE_SIDE_BY_SIDE;
+	int joint = above && below ? 3 : above ? 1 : below ? 2 : 0;
+	static const char *const ascii[] = { "-", "+", "+", "+" };
+	static const char *const utf8[] = { "─", "┴", "┬", "┼" };
+	const chtype acs[] = { ACS_HLINE, ACS_BTEE, ACS_TTEE, ACS_PLUS };
+	int i;
+
+	view->col = origin;
+
+	for (i = 0; i < avail; i++) {
+		int shape = i == left_width ? joint : 0;
+
+		switch (opt_line_graphics) {
+		case GRAPHIC_ASCII:
+			draw_chars_skip(view, LINE_SIDE_BY_SIDE, ascii[shape], 1, 0, 1, false);
+			break;
+		case GRAPHIC_DEFAULT:
+			draw_graphic(view, LINE_SIDE_BY_SIDE, &acs[shape], 1, false);
+			break;
+		case GRAPHIC_UTF_8:
+			draw_chars_skip(view, LINE_SIDE_BY_SIDE, utf8[shape], -1, 0, 1, false);
+			break;
+		}
+	}
+
+	view->col = origin + avail;
+}
+
 /* Draw a diff row as two columns separated by a vertical line. Returns
  * false when the view is too narrow. */
 static bool
@@ -558,6 +595,11 @@ draw_side_by_side(struct view *view, struct line *line, const struct box *box)
 
 	left_width = (avail - 1) / 2;
 	right_width = avail - 1 - left_width;
+
+	if (line->type == LINE_SIDE_BY_SIDE) {
+		draw_side_by_side_rule(view, line, origin, avail, left_width);
+		return true;
+	}
 
 	/* Rows with both an old and a new half have a newline cell. */
 	for (i = 0; i < box->cells; i++) {
@@ -589,16 +631,16 @@ draw_side_by_side(struct view *view, struct line *line, const struct box *box)
 
 	switch (opt_line_graphics) {
 	case GRAPHIC_ASCII:
-		draw_chars_skip(view, LINE_DEFAULT, "|", 1, 0, 1, false);
+		draw_chars_skip(view, LINE_SIDE_BY_SIDE, "|", 1, 0, 1, false);
 		break;
 	case GRAPHIC_DEFAULT: {
 		chtype separator = ACS_VLINE;
 
-		draw_graphic(view, LINE_DEFAULT, &separator, 1, false);
+		draw_graphic(view, LINE_SIDE_BY_SIDE, &separator, 1, false);
 		break;
 	}
 	case GRAPHIC_UTF_8:
-		draw_chars_skip(view, LINE_DEFAULT, "│", -1, 0, 1, false);
+		draw_chars_skip(view, LINE_SIDE_BY_SIDE, "│", -1, 0, 1, false);
 		break;
 	}
 

@@ -459,6 +459,7 @@ color stat-untracked		magenta	default
 color help-group		blue	default
 color help-action		yellow	default
 color diff-stat			blue	default
+color side-by-side		default	default
 color diff-add-highlight	green	default	standout
 color diff-del-highlight	red	default	standout
 color palette-0			magenta	default
