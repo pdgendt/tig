@@ -284,7 +284,7 @@ static enum line_type
 diff_common_ansi_type(struct view *view, enum line_type type, const struct ansi_state *state)
 {
 	const struct line_info *info;
-	int fg, bg, attr;
+	int attr;
 
 	if (ansi_state_is_default(state))
 		return type;
@@ -298,12 +298,15 @@ diff_common_ansi_type(struct view *view, enum line_type type, const struct ansi_
 			return LINE_DIFF_DEL_HIGHLIGHT;
 	}
 
+	/* Colors set by the program replace the line colors, so that its
+	 * default color means the terminal default as intended. Attributes
+	 * alone keep the line colors. */
 	info = get_line_info(view->keymap->name, type);
-	fg = state->fg == COLOR_DEFAULT ? info->fg : state->fg;
-	bg = state->bg == COLOR_DEFAULT ? info->bg : state->bg;
 	attr = info->attr | state->attr;
+	if (state->fg == COLOR_DEFAULT && state->bg == COLOR_DEFAULT)
+		return get_line_type_from_color(info->fg, info->bg, attr, type);
 
-	return get_line_type_from_color(fg, bg, attr, type);
+	return get_line_type_from_color(state->fg, state->bg, attr, type);
 }
 
 /* Split a line into cells at its ANSI escape sequences. @raw is the text
