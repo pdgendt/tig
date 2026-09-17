@@ -293,9 +293,11 @@ The following variables can be set:
 	value is used as the command to run. The command may include arguments
 	when the value is quoted, e.g. `set diff-highlight = "delta
 	--color-only"`. ANSI colors and attributes emitted by the program are
-	rendered, with true colors approximated by the 256-color palette.
-	Regions marked with reverse video on added and removed lines, as done
-	by 'diff-highlight', are governed by `color diff-add-highlight` and
+	rendered. Text for which the program sets colors is shown with those
+	colors, while text with only attributes keeps the colors of the line.
+	True colors are approximated by the 256-color palette. Regions
+	marked with reverse video on added and removed lines, as done by
+	'diff-highlight', are governed by `color diff-add-highlight` and
 	`color diff-del-highlight`.
 
 'diff-indicator' (bool)::
