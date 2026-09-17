@@ -404,6 +404,12 @@ io_exec(struct io *io, enum io_type type, const char *dir, char * const env[], c
 			if (read_from_stdin)
 				readfd = dup(STDIN_FILENO);
 
+			/* Programs reading from an input pipe are filters and
+			 * must not interfere with the terminal, e.g. by querying
+			 * it, so detach them from it. */
+			if (type == IO_RP)
+				setsid();
+
 			dup2(readfd,  STDIN_FILENO);
 			dup2(writefd, STDOUT_FILENO);
 			if (read_with_stderr)
