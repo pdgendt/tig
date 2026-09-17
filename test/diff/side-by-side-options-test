@@ -116,6 +116,43 @@ test_case utf8-line-numbers-no-indicator \
 [diff] Changes to 'common/src/main/scala/org/scalajs/benchmark/Benchmark.sc 100%
 EOF
 
+test_case file-line-numbers \
+	--tigrc='set side-by-side = yes' \
+	--before='printf "\nset line-graphics = ascii\nset diff-view-line-number = yes,file=yes,interval=1\n" >> "$HOME/.tigrc"' \
+	--args='show master' \
+	--script=':/@@ -1 [+]1,4' \
+	<<EOF
+ 55|    lazy val common = project("Com~| 50|    lazy val common = project("Comm~
+ 56| -  lazy val deltablue = project("~| 51| +  lazy val deltablue = project("D~
+ 57| -  lazy val richards = project("R~| 52| +  lazy val richards = project("Ri~
+ 58| -  lazy val sudoku = project("Sud~| 53| +  lazy val sudoku = project("Sudo~
+ 59| -  lazy val tracer = project("Tra~| 54| +  lazy val tracer = project("Trac~
+ 60|                                   | 55|
+ 61|    def project(id: String, settin~| 56|    def project(id: String, setting~
+ 62|        id = id.toLowerCase,       | 57|        id = id.toLowerCase,
+   | ----------------------------------+----------------------------------------
+   | diff --git a/project/build.sbt b/project/build.sbt
+   | index 87c2e66..122abd0 100644
+   | --- a/project/build.sbt
+   | +++ b/project/build.sbt
+   | ---------------------------------------------------------------------------
+   | @@ -1 +1,4 @@
+   | ----------------------------------+----------------------------------------
+  1| -addSbtPlugin("org.scala-lang.mod~|  1| +resolvers += Resolver.url("scala-~
+   |                                   |  2| +    url("http://repo.scala-js.org~
+   |                                   |  3| +
+   |                                   |  4| +addSbtPlugin("org.scala-lang.modu~
+   | ----------------------------------+----------------------------------------
+   | diff --git a/richards/exports.js b/richards/exports.js
+   | deleted file mode 100644
+   | index bfa7e16..0000000
+   | --- a/richards/exports.js
+   | +++ /dev/null
+   | ---------------------------------------------------------------------------
+   | @@ -1,13 +0,0 @@
+[diff] Changes to 'project/build.sbt' - line 247 of 417                      62%
+EOF
+
 test_case word-diff-fallback \
 	--tigrc='set side-by-side = yes' \
 	--args='show master^ --word-diff' \

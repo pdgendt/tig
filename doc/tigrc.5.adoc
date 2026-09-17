@@ -306,7 +306,9 @@ The following variables can be set:
 	truncated to half of the width. File and chunk headers span both
 	sides and are set apart by horizontal rules. Horizontal scrolling
 	moves both sides and 'wrap-lines' does not apply to side-by-side
-	rows. Searches match each side of a row separately, while the
+	rows. With the `file` option of the line-number column each side
+	shows the line numbers of its file. Searches match each side of a
+	row separately, while the
 	`%(text)` variable holds both sides separated by a newline, and
 	blaming a row with both sides uses its old side. Combined diffs,
 	word diffs and the stage view always use the unified layout. Off by
