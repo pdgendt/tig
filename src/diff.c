@@ -21,6 +21,7 @@
 #include "tig/diff.h"
 #include "tig/draw.h"
 #include "tig/apps.h"
+#include "tig/search.h"
 
 static enum status_code
 diff_open(struct view *view, enum open_flags flags)
@@ -32,15 +33,17 @@ diff_open(struct view *view, enum open_flags flags)
 			DIFF_ARGS, "%(cmdlineargs)", "--no-color", word_diff_arg(),
 			"%(commit)", "--", "%(fileargs)", NULL
 	};
+	struct diff_state *state = view->private;
 	enum status_code code;
 
-	diff_save_line(view, view->private, flags);
+	diff_save_line(view, state, flags);
+	state->side_by_side = opt_side_by_side && !opt_word_diff;
 
 	code = begin_update(view, NULL, diff_argv, flags | OPEN_WITH_STDERR);
 	if (code != SUCCESS)
 		return code;
 
-	return diff_init_highlight(view, view->private);
+	return diff_init_highlight(view, state);
 }
 
 enum status_code
@@ -286,20 +289,182 @@ diff_common_read_diff_wdiff(struct view *view, const char *text)
 }
 
 static bool
-diff_common_highlight(struct view *view, const char *text, enum line_type type)
+diff_common_highlight_cells(struct diff_stat_context *context, enum line_type type)
 {
-	struct diff_stat_context context = { text, type, true };
 	enum line_type hi_type = type == LINE_DIFF_ADD
 				 ? LINE_DIFF_ADD_HIGHLIGHT : LINE_DIFF_DEL_HIGHLIGHT;
 	const char *codes[] = { "\x1b[7m", "\x1b[27m" };
 	const enum line_type types[] = { hi_type, type };
 	int i;
 
-	for (i = 0; diff_common_add_cell_until(&context, codes[i], types[i]); i = (i + 1) % 2)
+	context->type = type;
+	for (i = 0; diff_common_add_cell_until(context, codes[i], types[i]); i = (i + 1) % 2)
 		;
 
-	diff_common_add_cell(&context, strlen(context.text), true);
-	return diff_common_add_line(view, text, type, &context);
+	return diff_common_add_cell(context, strlen(context->text), true);
+}
+
+static bool
+diff_common_highlight(struct view *view, const char *text, enum line_type type)
+{
+	struct diff_stat_context context = { text, type, true };
+
+	diff_common_highlight_cells(&context, type);
+	return diff_common_add_line(view, text, type, &context) != NULL;
+}
+
+/*
+ * Side-by-side rows.
+ *
+ * A row holds the unified diff text of the lines it shows joined by a
+ * newline: cells before the newline cell are drawn on the left and cells
+ * after it on the right. Rows without a newline cell show added lines on
+ * the right, removed lines on the left and context lines on both sides.
+ */
+
+static bool
+diff_side_by_side_add_cells(struct diff_state *state, struct diff_stat_context *context,
+			    const char *text, enum line_type type)
+{
+	if (!opt_diff_indicator && !state->stage) {
+		size_t drop = 0;
+
+		while (drop < state->parents && text[drop])
+			drop++;
+		text += drop;
+	}
+
+	context->text = text;
+	context->type = type;
+
+	if (state->highlight && strchr(text, 0x1b))
+		return diff_common_highlight_cells(context, type);
+
+	return diff_common_add_cell(context, strlen(text), true);
+}
+
+static bool
+diff_side_by_side_add_row(struct view *view, struct diff_state *state,
+			  const char *old, const char *new, enum line_type type)
+{
+	struct diff_stat_context context = { NULL, type, true };
+	enum line_type old_type = type == LINE_DIFF_DEL ? LINE_DIFF_DEL : type;
+	enum line_type new_type = type == LINE_DIFF_DEL ? LINE_DIFF_ADD : type;
+	struct line *line = NULL;
+	bool ok = true;
+
+	if (old && !diff_side_by_side_add_cells(state, &context, old, old_type))
+		ok = false;
+
+	if (ok && old && new) {
+		context.text = "\n";
+		context.type = LINE_DEFAULT;
+		if (!diff_common_add_cell(&context, 1, true))
+			ok = false;
+	}
+
+	if (ok && new && !diff_side_by_side_add_cells(state, &context, new, new_type))
+		ok = false;
+
+	if (ok)
+		line = diff_common_add_line(view, old ? old : new, type, &context);
+	else {
+		argv_free(context.cell_text);
+		free(context.cell_text);
+	}
+	if (!line)
+		return false;
+
+	line->side_by_side = 1;
+	return true;
+}
+
+/* Pair the buffered removed and added lines row by row. */
+static bool
+diff_side_by_side_flush(struct view *view, struct diff_state *state)
+{
+	size_t dels = argv_size(state->sbs_del);
+	size_t adds = argv_size(state->sbs_add);
+	size_t rows = MAX(dels, adds);
+	size_t i;
+	bool ok = true;
+
+	for (i = 0; ok && i < rows; i++) {
+		const char *old = i < dels ? state->sbs_del[i] : NULL;
+		const char *new = i < adds ? state->sbs_add[i] : NULL;
+
+		ok = diff_side_by_side_add_row(view, state, old, new,
+					       old ? LINE_DIFF_DEL : LINE_DIFF_ADD);
+	}
+
+	/* No newline markers are shown on their side after the rows. */
+	if (ok && state->sbs_del_marker)
+		ok = diff_side_by_side_add_row(view, state, state->sbs_del_marker, "",
+					       LINE_DIFF_NO_NEWLINE);
+	if (ok && state->sbs_add_marker)
+		ok = diff_side_by_side_add_row(view, state, "", state->sbs_add_marker,
+					       LINE_DIFF_NO_NEWLINE);
+
+	argv_free(state->sbs_del);
+	argv_free(state->sbs_add);
+	free(state->sbs_del_marker);
+	free(state->sbs_add_marker);
+	state->sbs_del_marker = state->sbs_add_marker = NULL;
+	return ok;
+}
+
+static void
+diff_side_by_side_done(struct diff_state *state)
+{
+	argv_free(state->sbs_del);
+	free(state->sbs_del);
+	state->sbs_del = NULL;
+	argv_free(state->sbs_add);
+	free(state->sbs_add);
+	state->sbs_add = NULL;
+	free(state->sbs_del_marker);
+	free(state->sbs_add_marker);
+	state->sbs_del_marker = state->sbs_add_marker = NULL;
+}
+
+static bool
+diff_side_by_side_read(struct view *view, const char *data, enum line_type type,
+		       struct diff_state *state, bool *handled)
+{
+	bool del = type == LINE_DIFF_DEL;
+	bool add = type == LINE_DIFF_ADD;
+
+	/* A no newline marker belongs to the side of the lines before it. */
+	if (type == LINE_DIFF_NO_NEWLINE &&
+	    (argv_size(state->sbs_del) || argv_size(state->sbs_add))) {
+		char **marker = argv_size(state->sbs_add) ? &state->sbs_add_marker
+							  : &state->sbs_del_marker;
+
+		free(*marker);
+		*marker = strdup(data);
+		*handled = true;
+		return *marker != NULL;
+	}
+
+	/* A run of removed lines followed by a run of added lines forms a
+	 * group of paired rows. Any other line, or a removed line after
+	 * added lines, ends the group. */
+	if (((!del && !add) || (del && argv_size(state->sbs_add))) &&
+	    !diff_side_by_side_flush(view, state))
+		return false;
+
+	*handled = del || add || type == LINE_DEFAULT;
+	if (del || add)
+		return argv_append(del ? &state->sbs_del : &state->sbs_add, data);
+	if (type == LINE_DEFAULT)
+		return diff_side_by_side_add_row(view, state, data, NULL, LINE_DEFAULT);
+	return true;
+}
+
+static void
+diff_done(struct view *view)
+{
+	diff_side_by_side_done(view->private);
 }
 
 bool
@@ -317,6 +482,15 @@ diff_common_read(struct view *view, const char *data, struct diff_state *state)
 			type = LINE_DIFF_DEL;
 		else if (type == LINE_DIFF_ADD_FILE)
 			type = LINE_DIFF_ADD;
+	}
+
+	if (state->side_by_side && state->reading_diff_chunk && !state->combined_diff) {
+		bool handled = false;
+
+		if (!diff_side_by_side_read(view, data, type, state, &handled))
+			return false;
+		if (handled)
+			return true;
 	}
 
 	if (!view->lines && type != LINE_COMMIT)
@@ -472,11 +646,20 @@ diff_line_has_old(const struct line *line)
 	       line->type != LINE_DIFF_NO_NEWLINE;
 }
 
+/* Whether a side-by-side row shows both a removed and an added line. */
+static bool
+diff_line_is_pair(const struct line *line)
+{
+	return line->side_by_side && line->type == LINE_DIFF_DEL &&
+	       strchr(box_text(line), '\n') != NULL;
+}
+
 static bool
 diff_line_has_new(const struct line *line)
 {
-	return line->type != LINE_DIFF_DEL && line->type != LINE_DIFF_DEL2 &&
-	       line->type != LINE_DIFF_NO_NEWLINE;
+	return diff_line_is_pair(line) ||
+	       (line->type != LINE_DIFF_DEL && line->type != LINE_DIFF_DEL2 &&
+		line->type != LINE_DIFF_NO_NEWLINE);
 }
 
 void
@@ -504,7 +687,8 @@ diff_restore_line(struct view *view, struct diff_state *state)
 		unsigned int lineno = diff_get_lineno(view, line, false);
 
 		for (line++; view_has_line(view, line) && line->type != LINE_DIFF_CHUNK; line++) {
-			if (lineno == state->lineno) {
+			if (lineno == state->lineno &&
+			    line->type != LINE_DIFF_NO_NEWLINE) {
 				unsigned long lineno = line - view->line;
 				unsigned long offset = lineno - (state->pos.lineno - state->pos.offset);
 
@@ -543,6 +727,12 @@ diff_read(struct view *view, struct buffer *buf, bool force_stop)
 		return diff_read_describe(view, buf, state);
 
 	if (!buf) {
+		bool flushed = diff_side_by_side_flush(view, state);
+
+		diff_side_by_side_done(state);
+		if (!flushed)
+			return false;
+
 		if (!diff_done_highlight(state)) {
 			if (!force_stop)
 				report("Failed to run the diff-highlight program: %s", opt_diff_highlight);
@@ -893,6 +1083,33 @@ diff_select(struct view *view, struct line *line)
 	diff_common_select(view, line, "Changes");
 }
 
+static bool
+diff_grep(struct view *view, struct line *line)
+{
+	const char *text, *sep;
+	const char *parts[3];
+	char *old;
+	bool found;
+
+	if (!diff_line_is_pair(line))
+		return view_column_grep(view, line);
+
+	/* Search the old and the new line separately so that anchors
+	 * apply to each of them. */
+	text = box_text(line);
+	sep = strchr(text, '\n');
+	old = strndup(text, sep - text);
+	if (!old)
+		return false;
+
+	parts[0] = old;
+	parts[1] = sep + 1;
+	parts[2] = NULL;
+	found = grep_text(view, parts);
+	free(old);
+	return found;
+}
+
 static struct view_ops diff_ops = {
 	"line",
 	argv_env.commit,
@@ -902,9 +1119,9 @@ static struct view_ops diff_ops = {
 	diff_read,
 	view_column_draw,
 	diff_request,
-	view_column_grep,
+	diff_grep,
 	diff_select,
-	NULL,
+	diff_done,
 	view_column_bit(LINE_NUMBER) | view_column_bit(TEXT),
 	pager_get_column_data,
 };

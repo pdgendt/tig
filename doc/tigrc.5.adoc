@@ -298,6 +298,16 @@ The following variables can be set:
 
 	Show +/- signs in the diff view. On by default.
 
+'side-by-side' (bool)::
+
+	Show diff chunks in the diff view side by side, with the old version
+	of the file on the left and the new version on the right. Runs of
+	removed and added lines are paired row by row, and each side is
+	truncated to half of the width. Horizontal scrolling moves both sides
+	and 'wrap-lines' does not apply to paired rows. Combined diffs, word
+	diffs and the stage view always use the unified layout. Off by
+	default.
+
 'ignore-space' (mixed) [no|all|some|at-eol|<bool>]::
 
 	Ignore space changes in diff view. By default no space changes are

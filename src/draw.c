@@ -490,6 +490,125 @@ draw_commit_title(struct view *view, struct view_column *column, enum line_type 
 			column->opt.commit_title.overflow, 0);
 }
 
+/* Draw the cells [first, last) of a box, starting at @text, as a column
+ * @width characters wide with its first @skip columns hidden. The view
+ * column is advanced past the hidden and the drawn columns. */
+static void
+draw_side_by_side_column(struct view *view, const struct box *box, size_t first, size_t last,
+			 const char *text, size_t skip, int width, enum line_type pad_type)
+{
+	static char expanded[SIZEOF_STR];
+	int starty = getcury(view->win);
+	int start = getcurx(view->win);
+	size_t hidden = skip;
+	int max_width = width + skip;
+	int visible;
+	size_t i;
+
+	for (i = first; i < last && max_width > 0; i++) {
+		const struct box_cell *cell = &box->cell[i];
+		const char *string = text;
+		int length = cell->length;
+
+		text += length;
+
+		while (*string && length > 0 && max_width > 0) {
+			size_t pos = string_expand(expanded, sizeof(expanded), string, length, opt_tab_size);
+			unsigned long col = view->col;
+			size_t drawn;
+
+			draw_chars_skip(view, cell->type, expanded, -1, hidden, max_width, true);
+			drawn = view->col - col;
+			max_width -= drawn;
+			hidden -= MIN(hidden, drawn);
+			string += pos;
+			length -= pos;
+		}
+	}
+
+	/* Count what was drawn from the cursor: a wide character cut by
+	 * the hidden columns is neither hidden nor drawn. The cursor wraps
+	 * to the next row when the last column of the screen was drawn. */
+	if (getcury(view->win) != starty)
+		visible = width;
+	else
+		visible = MIN(getcurx(view->win) - start, width);
+	view->col = view->pos.col + start + visible;
+	draw_space(view, pad_type, width - visible, width - visible);
+	view->col = view->pos.col + start + width;
+}
+
+/* Draw a diff row as two columns separated by a vertical line. Returns
+ * false when the view is too narrow. */
+static bool
+draw_side_by_side(struct view *view, struct line *line, const struct box *box)
+{
+	unsigned long origin = MAX(view->col, view->pos.col);
+	size_t skip = origin - view->col;
+	int avail = view->width - (origin - view->pos.col);
+	int left_width, right_width;
+	size_t left_first = 0, left_last = 0, right_first = 0, right_last = 0;
+	const char *right_text = box->text;
+	enum line_type left_pad = LINE_DEFAULT, right_pad = LINE_DEFAULT;
+	size_t offset = 0;
+	size_t i;
+
+	if (avail < 3)
+		return false;
+
+	left_width = (avail - 1) / 2;
+	right_width = avail - 1 - left_width;
+
+	/* Rows with both an old and a new half have a newline cell. */
+	for (i = 0; i < box->cells; i++) {
+		if (box->cell[i].length == 1 && box->text[offset] == '\n')
+			break;
+		offset += box->cell[i].length;
+	}
+
+	if (i < box->cells) {
+		left_last = i;
+		right_first = i + 1;
+		right_last = box->cells;
+		right_text = box->text + offset + 1;
+		if (line->type == LINE_DIFF_DEL) {
+			left_pad = LINE_DIFF_DEL;
+			right_pad = LINE_DIFF_ADD;
+		}
+	} else if (line->type == LINE_DIFF_ADD) {
+		right_last = box->cells;
+		right_pad = LINE_DIFF_ADD;
+	} else if (line->type == LINE_DIFF_DEL) {
+		left_last = box->cells;
+		left_pad = LINE_DIFF_DEL;
+	} else {
+		left_last = right_last = box->cells;
+	}
+
+	draw_side_by_side_column(view, box, left_first, left_last, box->text, skip, left_width, left_pad);
+
+	switch (opt_line_graphics) {
+	case GRAPHIC_ASCII:
+		draw_chars_skip(view, LINE_DEFAULT, "|", 1, 0, 1, false);
+		break;
+	case GRAPHIC_DEFAULT: {
+		chtype separator = ACS_VLINE;
+
+		draw_graphic(view, LINE_DEFAULT, &separator, 1, false);
+		break;
+	}
+	case GRAPHIC_UTF_8:
+		draw_chars_skip(view, LINE_DEFAULT, "│", -1, 0, 1, false);
+		break;
+	}
+
+	view->col = origin + left_width + 1;
+	draw_side_by_side_column(view, box, right_first, right_last, right_text, skip, right_width, right_pad);
+	view->col = origin + avail;
+
+	return true;
+}
+
 bool
 view_column_draw(struct view *view, struct line *line, unsigned int lineno)
 {
@@ -600,6 +719,9 @@ view_column_draw(struct view *view, struct line *line, unsigned int lineno)
 				const struct box *box = column_data.box;
 				const char *text = box->text;
 				size_t i;
+
+				if (line->side_by_side && draw_side_by_side(view, line, box))
+					return true;
 
 				for (i = 0; i < box->cells; i++) {
 					const struct box_cell *cell = &box->cell[i];

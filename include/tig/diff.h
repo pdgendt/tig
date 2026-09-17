@@ -25,7 +25,12 @@ struct diff_state {
 	bool adding_describe_ref;
 	bool highlight;
 	bool stage;
+	bool side_by_side;
 	unsigned int parents;
+	const char **sbs_del;	/* Removed lines waiting to be paired. */
+	const char **sbs_add;	/* Added lines waiting to be paired. */
+	char *sbs_del_marker;	/* No newline marker of the removed lines. */
+	char *sbs_add_marker;	/* No newline marker of the added lines. */
 	const char *file;
 	unsigned int lineno;
 	struct position pos;

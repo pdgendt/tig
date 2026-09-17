@@ -83,6 +83,7 @@
 	_('$', "commit title overflow display",	"commit-title-overflow"), \
 	_('d', "untracked directory info",	"status-show-untracked-dirs"), \
 	_('|', "view split",			"vertical-split"), \
+	_('S', "side-by-side diff",		"side-by-side"), \
 
 
 const struct menu_item toggle_menu_items[] = {

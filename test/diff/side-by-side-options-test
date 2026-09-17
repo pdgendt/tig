@@ -1,0 +1,155 @@
+#!/bin/sh
+
+. libtest.sh
+. libgit.sh
+
+in_work_dir create_repo_from_tgz "$base_dir/files/scala-js-benchmarks.tgz"
+
+test_case surplus-added-lines \
+	--tigrc='set side-by-side = yes' \
+	--before='printf "\nset line-graphics = ascii\n" >> "$HOME/.tigrc"' \
+	--args='show master' \
+	--script=':/@@ -1 [+]1,4' \
+	<<EOF
+   )                                   |   )
+                                       |
+   lazy val common = project("Common",~|   lazy val common = project("Common", ~
+-  lazy val deltablue = project("Delta~|+  lazy val deltablue = project("DeltaB~
+-  lazy val richards = project("Richar~|+  lazy val richards = project("Richard~
+-  lazy val sudoku = project("Sudoku",~|+  lazy val sudoku = project("Sudoku", ~
+-  lazy val tracer = project("Tracer",~|+  lazy val tracer = project("Tracer", ~
+                                       |
+   def project(id: String, settings: S~|   def project(id: String, settings: Se~
+       id = id.toLowerCase,            |       id = id.toLowerCase,
+diff --git a/project/build.sbt b/project/build.sbt
+index 87c2e66..122abd0 100644
+--- a/project/build.sbt
++++ b/project/build.sbt
+@@ -1 +1,4 @@
+-addSbtPlugin("org.scala-lang.modules.~|+resolvers += Resolver.url("scala-js-sn~
+                                       |+    url("http://repo.scala-js.org/repo~
+                                       |+
+                                       |+addSbtPlugin("org.scala-lang.modules.s~
+diff --git a/richards/exports.js b/richards/exports.js
+deleted file mode 100644
+index bfa7e16..0000000
+--- a/richards/exports.js
++++ /dev/null
+@@ -1,13 +0,0 @@
+-/*                     __            ~|
+-**     ________ ___   / /  ___      _~|
+-**    / __/ __// _ | / /  / _ | __ / ~|
+[diff] Changes to 'project/build.sbt' - line 212 of 354                      63%
+EOF
+
+test_case paired-runs \
+	--tigrc='set side-by-side = yes' \
+	--before='printf "\nset line-graphics = ascii\n" >> "$HOME/.tigrc"' \
+	--args='show master' \
+	--script=':/@@ -53,10' \
+	<<EOF
+--- a/project/Build.scala
++++ b/project/Build.scala
+@@ -24,11 +24,6 @@ object ScalaJSBenchmarks extends Build {
+       )                               |       )
+   )                                   |   )
+                                       |
+-  lazy val benchmarkSettings = defaul~|
+-      unmanagedSources in (Compile, p~|
+-          baseDirectory.value / "expo~|
+-  )                                   |
+-                                      |
+   lazy val parent: Project = Project( |   lazy val parent: Project = Project(
+       id = "parent",                  |       id = "parent",
+       base = file("."),               |       base = file("."),
+@@ -53,10 +48,10 @@ object ScalaJSBenchmarks extends Build {
+   )                                   |   )
+                                       |
+   lazy val common = project("Common",~|   lazy val common = project("Common", ~
+-  lazy val deltablue = project("Delta~|+  lazy val deltablue = project("DeltaB~
+-  lazy val richards = project("Richar~|+  lazy val richards = project("Richard~
+-  lazy val sudoku = project("Sudoku",~|+  lazy val sudoku = project("Sudoku", ~
+-  lazy val tracer = project("Tracer",~|+  lazy val tracer = project("Tracer", ~
+                                       |
+   def project(id: String, settings: S~|   def project(id: String, settings: Se~
+       id = id.toLowerCase,            |       id = id.toLowerCase,
+diff --git a/project/build.sbt b/project/build.sbt
+index 87c2e66..122abd0 100644
+--- a/project/build.sbt
+[diff] Changes to 'project/Build.scala' - line 197 of 354                    59%
+EOF
+
+test_case utf8-line-numbers-no-indicator \
+	--tigrc='set side-by-side = yes' \
+	--before='printf "\nset line-graphics = utf-8\nset diff-view-line-number = yes\nset diff-indicator = no\n" >> "$HOME/.tigrc"' \
+	--args='show master^' \
+	--script=':20' \
+	<<EOF
+  1│ commit a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff
+   │ Author:     Jonas Fonseca <jonas.fonseca@gmail.com>
+   │ AuthorDate: Sat Mar 1 15:59:02 2014 -0500
+   │ Commit:     Jonas Fonseca <jonas.fonseca@gmail.com>
+  5│ CommitDate: Sat Mar 1 15:59:02 2014 -0500
+   │
+   │     Add type parameter for js.Dynamic
+   │ ---
+   │  common/src/main/scala/org/scalajs/benchmark/Benchmark.scala | 2 +-
+ 10│  1 file changed, 1 insertion(+), 1 deletion(-)
+   │
+   │ diff --git a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala b/
+   │ index 65f914a..3aa4320 100644
+   │ --- a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
+ 15│ +++ b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
+   │ @@ -15,7 +15,7 @@ object Benchmark {
+   │   val benchmarks = js.Array[Benchmar~│  val benchmarks = js.Array[Benchmar~
+   │   val benchmarkApps = js.Array[Bench~│  val benchmarkApps = js.Array[Bench~
+   │                                      │
+ 20│   val global = js.Dynamic.global.asI~│  val global = js.Dynamic.global.asI~
+   │   global("runScalaJSBenchmarks") = r~│  global("runScalaJSBenchmarks") = r~
+   │   global("initScalaJSBenchmarkApps")~│  global("initScalaJSBenchmarkApps")~
+   │                                      │
+
+
+
+
+
+[diff] Changes to 'common/src/main/scala/org/scalajs/benchmark/Benchmark.sc 100%
+EOF
+
+test_case word-diff-fallback \
+	--tigrc='set side-by-side = yes' \
+	--args='show master^ --word-diff' \
+	--script=':20' \
+	<<EOF
+commit a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff
+Author:     Jonas Fonseca <jonas.fonseca@gmail.com>
+AuthorDate: Sat Mar 1 15:59:02 2014 -0500
+Commit:     Jonas Fonseca <jonas.fonseca@gmail.com>
+CommitDate: Sat Mar 1 15:59:02 2014 -0500
+
+    Add type parameter for js.Dynamic
+---
+ common/src/main/scala/org/scalajs/benchmark/Benchmark.scala | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala b/commo
+index 65f914a..3aa4320 100644
+--- a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
++++ b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
+@@ -15,7 +15,7 @@ object Benchmark {
+  val benchmarks = js.Array[Benchmark]()
+  val benchmarkApps = js.Array[BenchmarkApp]()
+
+  val global = [-js.Dynamic.global.asInstanceOf[js.Dictionary]-]{+js.Dynamic.glo
+  global("runScalaJSBenchmarks") = runBenchmarks _
+  global("initScalaJSBenchmarkApps") = initBenchmarkApps _
+
+
+
+
+
+
+[diff] Changes to 'common/src/main/scala/org/scalajs/benchmark/Benchmark.sc 100%
+EOF
+
+run_test_cases

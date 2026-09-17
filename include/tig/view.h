@@ -38,7 +38,7 @@ struct box {
 
 struct line {
 	enum line_type type;
-	unsigned int lineno:24;
+	unsigned int lineno:23;
 
 	/* State flags */
 	unsigned int selected:1;
@@ -49,6 +49,7 @@ struct line {
 	unsigned int no_commit_refs:1;
 	unsigned int graph_indent:1;
 	unsigned int search_result:1;
+	unsigned int side_by_side:1;	/* Diff row with an old and a new half. */
 
 	void *data;		/* User data */
 };

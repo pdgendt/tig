@@ -1,0 +1,202 @@
+#!/bin/sh
+
+. libtest.sh
+. libgit.sh
+
+export GIT_EDITOR=\$EDITOR
+
+tigrc <<EOF
+set side-by-side = yes
+set line-graphics = ascii
+EOF
+
+steps '
+	:save-display default.screen
+	:20
+	:scroll-right
+	:save-display scrolled.screen
+	:scroll-first-col
+	:save-view side-by-side.view
+	:toggle side-by-side
+	:save-display unified.screen
+	:save-view unified.view
+	:toggle side-by-side
+	:save-view restored.view
+	:exec !vim +%(lineno) %(file)
+	:9
+	:/js.Any
+	:save-view search.view
+	:9
+	:enter
+	:save-view enter.view
+'
+
+in_work_dir create_repo_from_tgz "$base_dir/files/scala-js-benchmarks.tgz"
+
+test_tig show master^
+
+for view in unified restored search enter; do
+	sed -n "s/^Position: /$view: /p" "$view.view" >> positions
+done
+
+assert_equals 'default.screen' <<EOF
+commit a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff
+Author:     Jonas Fonseca <jonas.fonseca@gmail.com>
+AuthorDate: Sat Mar 1 15:59:02 2014 -0500
+Commit:     Jonas Fonseca <jonas.fonseca@gmail.com>
+CommitDate: Sat Mar 1 15:59:02 2014 -0500
+
+    Add type parameter for js.Dynamic
+---
+ common/src/main/scala/org/scalajs/benchmark/Benchmark.scala | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala b/commo
+index 65f914a..3aa4320 100644
+--- a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
++++ b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
+@@ -15,7 +15,7 @@ object Benchmark {
+   val benchmarks = js.Array[Benchmark~|   val benchmarks = js.Array[Benchmark]~
+   val benchmarkApps = js.Array[Benchm~|   val benchmarkApps = js.Array[Benchma~
+                                       |
+-  val global = js.Dynamic.global.asIn~|+  val global = js.Dynamic.global.asIns~
+   global("runScalaJSBenchmarks") = ru~|   global("runScalaJSBenchmarks") = run~
+   global("initScalaJSBenchmarkApps") ~|   global("initScalaJSBenchmarkApps") =~
+                                       |
+
+
+
+
+
+[diff] a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff - line 1 of 23              100%
+EOF
+
+assert_equals 'scrolled.screen' <<EOF
+1eb70ff
+@gmail.com>
+0
+@gmail.com>
+0
+
+
+
+mark/Benchmark.scala | 2 +-
+ion(-)
+
+calajs/benchmark/Benchmark.scala b/common/src/main/scala/org/scalajs/benchmark/B
+
+benchmark/Benchmark.scala
+benchmark/Benchmark.scala
+
+)                                      |)
+kApp]()                                |kApp]()
+                                       |
+anceOf[js.Dictionary]                  |anceOf[js.Dictionary[js.Any]]
+enchmarks _                            |enchmarks _
+initBenchmarkApps _                    |initBenchmarkApps _
+                                       |
+
+
+
+
+
+[diff] Changes to 'common/src/main/scala/org/scalajs/benchmark/Benchmark.sc 100%
+EOF
+
+assert_equals 'side-by-side.view' <<EOF
+View: diff
+Ref: Changes to 'common/src/main/scala/org/scalajs/benchmark/Benchmark.scala'
+Dimensions: height=28 width=80
+Position: offset=0 column=0 lineno=19
+line[  0] type=commit selected=0
+line[  0] cells=1 text=[commit a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff]
+line[  1] type= selected=0
+line[  1] cells=1 text=[Author:     Jonas Fonseca <jonas.fonseca@gmail.com>]
+line[  2] type= selected=0
+line[  2] cells=1 text=[AuthorDate: Sat Mar 1 15:59:02 2014 -0500]
+line[  3] type= selected=0
+line[  3] cells=1 text=[Commit:     Jonas Fonseca <jonas.fonseca@gmail.com>]
+line[  4] type= selected=0
+line[  4] cells=1 text=[CommitDate: Sat Mar 1 15:59:02 2014 -0500]
+line[  5] type=default selected=0
+line[  5] cells=1 text=[]
+line[  6] type=default selected=0
+line[  6] cells=1 text=[    Add type parameter for js.Dynamic]
+line[  7] type=diff-start selected=0
+line[  7] cells=1 text=[---]
+line[  8] type=diff-stat selected=0
+line[  8] cells=4 text=[ common/src/main/scala/org/scalajs/benchmark/Benchmark.scala ][| 2 ][+][-]
+line[  9] type=default selected=0
+line[  9] cells=1 text=[ 1 file changed, 1 insertion(+), 1 deletion(-)]
+line[ 10] type=default selected=0
+line[ 10] cells=1 text=[]
+line[ 11] type=diff-header selected=0
+line[ 11] cells=1 text=[diff --git a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala]
+line[ 12] type=diff-index selected=0
+line[ 12] cells=1 text=[index 65f914a..3aa4320 100644]
+line[ 13] type=diff-del-file selected=0
+line[ 13] cells=1 text=[--- a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala]
+line[ 14] type=diff-add-file selected=0
+line[ 14] cells=1 text=[+++ b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala]
+line[ 15] type=diff-chunk selected=0
+line[ 15] cells=2 text=[@@ -15,7 +15,7 @@][ object Benchmark {]
+line[ 16] type=default selected=0
+line[ 16] cells=1 text=[   val benchmarks = js.Array[Benchmark]()]
+line[ 17] type=default selected=0
+line[ 17] cells=1 text=[   val benchmarkApps = js.Array[BenchmarkApp]()]
+line[ 18] type=default selected=0
+line[ 18] cells=1 text=[ ]
+line[ 19] type=diff-del selected=1
+line[ 19] cells=3 text=[-  val global = js.Dynamic.global.asInstanceOf[js.Dictionary]][
+][+  val global = js.Dynamic.global.asInstanceOf[js.Dictionary[js.Any]]]
+line[ 20] type=default selected=0
+line[ 20] cells=1 text=[   global("runScalaJSBenchmarks") = runBenchmarks _]
+line[ 21] type=default selected=0
+line[ 21] cells=1 text=[   global("initScalaJSBenchmarkApps") = initBenchmarkApps _]
+line[ 22] type=default selected=0
+line[ 22] cells=1 text=[ ]
+EOF
+
+assert_equals 'unified.screen' <<EOF
+commit a1dcf1aaa11470978db1d5d8bcf9e16201eb70ff
+Author:     Jonas Fonseca <jonas.fonseca@gmail.com>
+AuthorDate: Sat Mar 1 15:59:02 2014 -0500
+Commit:     Jonas Fonseca <jonas.fonseca@gmail.com>
+CommitDate: Sat Mar 1 15:59:02 2014 -0500
+
+    Add type parameter for js.Dynamic
+---
+ common/src/main/scala/org/scalajs/benchmark/Benchmark.scala | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala b/commo
+index 65f914a..3aa4320 100644
+--- a/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
++++ b/common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
+@@ -15,7 +15,7 @@ object Benchmark {
+   val benchmarks = js.Array[Benchmark]()
+   val benchmarkApps = js.Array[BenchmarkApp]()
+
+-  val global = js.Dynamic.global.asInstanceOf[js.Dictionary]
++  val global = js.Dynamic.global.asInstanceOf[js.Dictionary[js.Any]]
+   global("runScalaJSBenchmarks") = runBenchmarks _
+   global("initScalaJSBenchmarkApps") = initBenchmarkApps _
+
+
+
+
+
+[diff] Changes to 'common/src/main/scala/org/scalajs/benchmark/Benchmark.sc 100%
+EOF
+
+assert_equals 'editor.log' <<EOF
++18 common/src/main/scala/org/scalajs/benchmark/Benchmark.scala
+  val benchmarkApps = js.Array[BenchmarkApp]()
+EOF
+
+assert_equals 'positions' <<EOF
+unified: offset=0 column=0 lineno=19
+restored: offset=0 column=0 lineno=19
+search: offset=0 column=0 lineno=19
+enter: offset=0 column=0 lineno=11
+EOF

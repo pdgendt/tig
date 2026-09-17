@@ -148,6 +148,7 @@ Toggle keys (enter: o <key>):
                            $ commit-title-overflow      Toggle commit title overflow display
                            d status-show-untracked-dirs Toggle untracked directory info
                            | vertical-split             Toggle view split
+                           S side-by-side               Toggle side-by-side diff
 
 
 
@@ -155,5 +156,4 @@ Toggle keys (enter: o <key>):
 
 
 
-
-[help] - line 2 of 150                                                                          100%
+[help] - line 2 of 151                                                                          100%
