@@ -303,10 +303,15 @@ The following variables can be set:
 	Show diff chunks in the diff view side by side, with the old version
 	of the file on the left and the new version on the right. Runs of
 	removed and added lines are paired row by row, and each side is
-	truncated to half of the width. Horizontal scrolling moves both sides
-	and 'wrap-lines' does not apply to paired rows. Combined diffs, word
-	diffs and the stage view always use the unified layout. Off by
-	default.
+	truncated to half of the width. File and chunk headers span both
+	sides and are set apart by horizontal rules. Horizontal scrolling
+	moves both sides and 'wrap-lines' does not apply to side-by-side
+	rows. Searches match each side of a row separately, while the
+	`%(text)` variable holds both sides separated by a newline, and
+	blaming a row with both sides uses its old side. Combined diffs,
+	word diffs and the stage view always use the unified layout. Off by
+	default. The separator and rules are colored with
+	`color side-by-side`.
 
 'ignore-space' (mixed) [no|all|some|at-eol|<bool>]::
 
@@ -1097,6 +1102,7 @@ setting the *default* color option.
 			 status view. Use 'help.header' to color the keymap
 			 sections in the help view.
 |line-number		|Line numbers.
+|side-by-side		|The separator and rules of the side-by-side diff layout.
 |id			|The commit ID.
 |date			|The committer date or author date.
 |author			|The commit author.
