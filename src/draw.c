@@ -578,11 +578,14 @@ draw_side_by_side_rule(struct view *view, struct line *line, unsigned long origi
 /* Draw a diff row as two columns separated by a vertical line. Returns
  * false when the view is too narrow. */
 static bool
-draw_side_by_side(struct view *view, struct line *line, const struct box *box)
+draw_side_by_side(struct view *view, struct line *line, const struct box *box,
+		  const struct view_column_data *column_data)
 {
 	unsigned long origin = MAX(view->col, view->pos.col);
 	size_t skip = origin - view->col;
 	int avail = view->width - (origin - view->pos.col);
+	struct view_column *numbers = get_view_column(view, VIEW_COLUMN_LINE_NUMBER);
+	int gutter = 0;
 	int left_width, right_width;
 	size_t left_first = 0, left_last = 0, right_first = 0, right_last = 0;
 	const char *right_text = box->text;
@@ -593,8 +596,15 @@ draw_side_by_side(struct view *view, struct line *line, const struct box *box)
 	if (avail < 3)
 		return false;
 
-	left_width = (avail - 1) / 2;
-	right_width = avail - 1 - left_width;
+	/* With file line numbers the right side gets its own gutter. */
+	if (numbers && !numbers->hidden && numbers->opt.line_number.display &&
+	    numbers->opt.line_number.file)
+		gutter = MIN(9, MAX(3, numbers->width)) + 2;
+	if (avail - gutter < 3)
+		gutter = 0;
+
+	left_width = (avail - 1 - gutter) / 2;
+	right_width = avail - 1 - gutter - left_width;
 
 	if (line->type == LINE_SIDE_BY_SIDE) {
 		draw_side_by_side_rule(view, line, origin, avail, left_width);
@@ -645,6 +655,11 @@ draw_side_by_side(struct view *view, struct line *line, const struct box *box)
 	}
 
 	view->col = origin + left_width + 1;
+	if (gutter) {
+		draw_lineno_custom(view, numbers,
+				   column_data->new_line_number ? *column_data->new_line_number : 0);
+		view->col = origin + left_width + 1 + gutter;
+	}
 	draw_side_by_side_column(view, box, right_first, right_last, right_text, skip, right_width, right_pad);
 	view->col = origin + avail;
 
@@ -770,7 +785,7 @@ view_column_draw(struct view *view, struct line *line, unsigned int lineno)
 				const char *text = box->text;
 				size_t i;
 
-				if (line->side_by_side && draw_side_by_side(view, line, box))
+				if (line->side_by_side && draw_side_by_side(view, line, box, &column_data))
 					return true;
 
 				for (i = 0; i < box->cells; i++) {

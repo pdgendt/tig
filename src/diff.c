@@ -1140,7 +1140,13 @@ diff_get_column_data(struct view *view, const struct line *line, struct view_col
 			new_lineno = diff_get_lineno(view, (struct line *) line, false);
 	}
 
-	column_data->line_number = new_lineno ? &new_lineno : &old_lineno;
+	/* Two column rows number each side. */
+	if (line->side_by_side) {
+		column_data->line_number = &old_lineno;
+		column_data->new_line_number = &new_lineno;
+	} else {
+		column_data->line_number = new_lineno ? &new_lineno : &old_lineno;
+	}
 	return true;
 }
 

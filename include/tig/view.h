@@ -196,6 +196,7 @@ struct view_column_data {
 	const struct graph_canvas *graph_canvas;
 	const char *id;
 	const unsigned long *line_number;
+	const unsigned long *new_line_number;	/* Right side of two column rows. */
 	const mode_t *mode;
 	const struct ref *ref;
 	const struct ref *refs;
