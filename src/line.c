@@ -20,11 +20,19 @@
 static struct line_rule *line_rule;
 static size_t line_rules;
 
-static struct line_info **color_pair;
+struct line_color_pair {
+	int fg;
+	int bg;
+};
+
+static struct line_color_pair *color_pair;
 static size_t color_pairs;
 
+static int default_fg = COLOR_WHITE;
+static int default_bg = COLOR_BLACK;
+
 DEFINE_ALLOCATOR(realloc_line_rule, struct line_rule, 8)
-DEFINE_ALLOCATOR(realloc_color_pair, struct line_info *, 8)
+DEFINE_ALLOCATOR(realloc_color_pair, struct line_color_pair, 8)
 
 enum line_type
 get_line_type(const char *line)
@@ -194,27 +202,34 @@ foreach_line_rule(line_rule_visitor_fn visitor, void *data)
 	return true;
 }
 
-static void
-init_line_info_color_pair(struct line_info *info, enum line_type type,
-	int default_bg, int default_fg)
+/* Color pair IDs are limited to 8 bits by COLOR_PAIR(). */
+#define MAX_COLOR_PAIRS	255
+
+static bool
+init_line_info_color_pair(struct line_info *info)
 {
 	int bg = info->bg == COLOR_DEFAULT ? default_bg : info->bg;
 	int fg = info->fg == COLOR_DEFAULT ? default_fg : info->fg;
 	int i;
 
 	for (i = 0; i < color_pairs; i++) {
-		if (color_pair[i]->fg == info->fg && color_pair[i]->bg == info->bg) {
+		if (color_pair[i].fg == info->fg && color_pair[i].bg == info->bg) {
 			info->color_pair = i;
-			return;
+			return true;
 		}
 	}
+
+	if (COLOR_ID(color_pairs) > MAX_COLOR_PAIRS || COLOR_ID(color_pairs) >= COLOR_PAIRS)
+		return false;
 
 	if (!realloc_color_pair(&color_pair, color_pairs, 1))
 		die("Failed to allocate color pair");
 
-	color_pair[color_pairs] = info;
+	color_pair[color_pairs].fg = info->fg;
+	color_pair[color_pairs].bg = info->bg;
 	info->color_pair = color_pairs++;
 	init_pair(COLOR_ID(info->color_pair), fg, bg);
+	return true;
 }
 
 void
@@ -223,9 +238,10 @@ init_colors(void)
 	char *no_color = getenv("NO_COLOR");
 	struct line_rule query = { "default", STRING_SIZE("default") };
 	struct line_rule *rule = find_line_rule(&query);
-	int default_bg = rule ? rule->info.bg : COLOR_BLACK;
-	int default_fg = rule ? rule->info.fg : COLOR_WHITE;
 	enum line_type type;
+
+	default_bg = rule ? rule->info.bg : COLOR_BLACK;
+	default_fg = rule ? rule->info.fg : COLOR_WHITE;
 
 	/* XXX: Even if the terminal does not support colors (e.g.
 	 * TERM=dumb) init_colors() must ensure that the built-in rules
@@ -246,7 +262,7 @@ init_colors(void)
 		struct line_info *info;
 
 		for (info = &rule->info; info; info = info->next) {
-			init_line_info_color_pair(info, type, default_bg, default_fg);
+			init_line_info_color_pair(info);
 		}
 	}
 }
