@@ -99,30 +99,52 @@ struct app_external
 {
 	static struct app_external dhlt_app = { { NULL }, { "GIT_CONFIG=/dev/null", NULL } };
 	static bool did_search = false;
+	static char dhlt_query[SIZEOF_STR];
+	static char dhlt_cmd[SIZEOF_STR];
 	static char dhlt_path[SIZEOF_STR];
 	static char perl_path[SIZEOF_STR];
 	static char perl_include[SIZEOF_STR];
+	const char *argv[SIZEOF_ARG];
 	char dhlt_dir[SIZEOF_STR];
+	int argc = 0;
+	int i, j = 0;
 
-	if (!did_search
-	    && app_diff_highlight_path_search(dhlt_path, sizeof(dhlt_path), query)
-	    && *dhlt_path) {
-		if (suffixcmp(dhlt_path, strlen(dhlt_path), "/diff-highlight.perl")) {
-			dhlt_app.argv[0] = dhlt_path;
-			dhlt_app.argv[1] = NULL;
-		} else if (path_search(perl_path, sizeof(perl_path), "perl", getenv("PATH"), X_OK)) {
-			/* if the package manager failed to "make install" within the contrib dir, rescue via */
-			/* perl -MDiffHighlight -I/path/containing /path/containing/diff-highlight.perl */
-			string_ncopy(dhlt_dir, dhlt_path, strlen(dhlt_path));
-			string_format(perl_include, "-I%s", dirname(dhlt_dir));
-			dhlt_app.argv[0] = perl_path;
-			dhlt_app.argv[1] = "-MDiffHighlight";
-			dhlt_app.argv[2] = perl_include;
-			dhlt_app.argv[3] = dhlt_path;
-			dhlt_app.argv[4] = NULL;
-		}
-	}
+	if (!query)
+		query = "";
+
+	if (did_search && !strcmp(query, dhlt_query))
+		return &dhlt_app;
+
 	did_search = true;
+	dhlt_app.argv[0] = NULL;
+	string_ncopy(dhlt_query, query, strlen(query));
+	string_ncopy(dhlt_cmd, query, strlen(query));
+
+	if (!argv_from_string_no_quotes(argv, &argc, dhlt_cmd) || argc < 1)
+		return &dhlt_app;
+
+	if (!app_diff_highlight_path_search(dhlt_path, sizeof(dhlt_path), argv[0])
+	    || !*dhlt_path)
+		return &dhlt_app;
+
+	if (suffixcmp(dhlt_path, strlen(dhlt_path), "/diff-highlight.perl")) {
+		dhlt_app.argv[j++] = dhlt_path;
+	} else if (path_search(perl_path, sizeof(perl_path), "perl", getenv("PATH"), X_OK)) {
+		/* if the package manager failed to "make install" within the contrib dir, rescue via */
+		/* perl -MDiffHighlight -I/path/containing /path/containing/diff-highlight.perl */
+		string_ncopy(dhlt_dir, dhlt_path, strlen(dhlt_path));
+		string_format(perl_include, "-I%s", dirname(dhlt_dir));
+		dhlt_app.argv[j++] = perl_path;
+		dhlt_app.argv[j++] = "-MDiffHighlight";
+		dhlt_app.argv[j++] = perl_include;
+		dhlt_app.argv[j++] = dhlt_path;
+	} else {
+		return &dhlt_app;
+	}
+
+	for (i = 1; i < argc && j < SIZEOF_ARG - 1; i++)
+		dhlt_app.argv[j++] = argv[i];
+	dhlt_app.argv[j] = NULL;
 
 	return &dhlt_app;
 }
