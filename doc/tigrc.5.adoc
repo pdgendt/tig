@@ -290,9 +290,11 @@ The following variables can be set:
 
 	Whether to highlight diffs using Git's 'diff-highlight' program. Defaults
 	to false. When set to true then 'diff-highlight' is used, else the option
-	value is used as the path. When this option is in effect, highlighted
-	regions are governed by `color diff-add-highlight` and
-	`color diff-del-highlight`.
+	value is used as the path. ANSI colors and attributes emitted by the
+	program are rendered, with true colors approximated by the 256-color
+	palette. Regions marked with reverse video on added and removed lines,
+	as done by 'diff-highlight', are governed by `color diff-add-highlight`
+	and `color diff-del-highlight`.
 
 'diff-indicator' (bool)::
 
@@ -334,7 +336,8 @@ The following variables can be set:
 'wrap-lines' (bool)::
 
 	Wrap long lines. By default, lines are not wrapped.
-	Not compatible with line numbers enabled.
+	Not compatible with line numbers enabled. Lines containing ANSI
+	escape sequences are not wrapped.
 
 'wrap-search' (bool)::
 

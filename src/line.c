@@ -16,6 +16,7 @@
 #include "tig/refdb.h"
 #include "tig/line.h"
 #include "tig/util.h"
+#include "tig/ansi.h"
 
 static struct line_rule *line_rule;
 static size_t line_rules;
@@ -28,11 +29,17 @@ struct line_color_pair {
 static struct line_color_pair *color_pair;
 static size_t color_pairs;
 
+/* Line types created on demand for ANSI colors. */
+static enum line_type *color_type;
+static size_t color_types;
+
+static bool colors_enabled;
 static int default_fg = COLOR_WHITE;
 static int default_bg = COLOR_BLACK;
 
 DEFINE_ALLOCATOR(realloc_line_rule, struct line_rule, 8)
 DEFINE_ALLOCATOR(realloc_color_pair, struct line_color_pair, 8)
+DEFINE_ALLOCATOR(realloc_color_type, enum line_type, 32)
 
 enum line_type
 get_line_type(const char *line)
@@ -251,6 +258,7 @@ init_colors(void)
 		return;
 
 	start_color();
+	colors_enabled = true;
 
 	if (assume_default_colors(default_fg, default_bg) == ERR) {
 		default_bg = COLOR_BLACK;
@@ -265,6 +273,68 @@ init_colors(void)
 			init_line_info_color_pair(info);
 		}
 	}
+}
+
+/* Reduce a color from the 256-color palette to what the terminal supports. */
+static int
+reduce_color(int color, int *attr)
+{
+	if (color == COLOR_DEFAULT || color < COLORS)
+		return color;
+
+	if (color >= 16 && COLORS < 256)
+		color = ansi_color_to_16(color);
+
+	if (color >= 8 && COLORS < 16) {
+		color -= 8;
+		if (attr)
+			*attr |= A_BOLD;
+	}
+
+	return color < COLORS ? color : COLOR_DEFAULT;
+}
+
+enum line_type
+get_line_type_from_color(int fg, int bg, int attr, enum line_type base)
+{
+	struct line_info *info = get_line_info(NULL, base);
+	int base_attr = info->attr;
+	int base_fg = colors_enabled ? reduce_color(info->fg, &base_attr) : COLOR_DEFAULT;
+	int base_bg = colors_enabled ? reduce_color(info->bg, NULL) : COLOR_DEFAULT;
+	int base_pair = info->color_pair;
+	size_t i;
+
+	if (!colors_enabled) {
+		fg = COLOR_DEFAULT;
+		bg = COLOR_DEFAULT;
+	} else {
+		fg = reduce_color(fg, &attr);
+		bg = reduce_color(bg, NULL);
+	}
+
+	if (fg == base_fg && bg == base_bg && attr == base_attr)
+		return base;
+
+	for (i = 0; i < color_types; i++) {
+		info = &line_rule[color_type[i]].info;
+		if (info->fg == fg && info->bg == bg && info->attr == attr)
+			return color_type[i];
+	}
+
+	if (!realloc_color_type(&color_type, color_types, 1))
+		return base;
+
+	info = init_line_info(NULL, "", 0, "", 0, NULL);
+	info->fg = fg;
+	info->bg = bg;
+	info->attr = attr;
+
+	/* Out of color pairs; keep the attributes with the colors of @base. */
+	if (colors_enabled && !init_line_info_color_pair(info))
+		info->color_pair = base_pair;
+
+	color_type[color_types++] = (enum line_type) (line_rules - 1);
+	return (enum line_type) (line_rules - 1);
 }
 
 /* vim: set ts=8 sw=8 noexpandtab: */

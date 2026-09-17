@@ -131,6 +131,11 @@ struct line_rule {
 enum line_type get_line_type(const char *line);
 enum line_type get_line_type_from_ref(const struct ref *ref);
 
+/* Get a line type with the given colors and attributes, creating it if
+ * needed. Falls back to the colors of @base when no more color pairs
+ * are available, and to @base itself when nothing else is possible. */
+enum line_type get_line_type_from_color(int fg, int bg, int attr, enum line_type base);
+
 const char *get_line_type_name(enum line_type type);
 
 struct line_info *get_line_info(const char *prefix, enum line_type type);

@@ -1,0 +1,113 @@
+#!/bin/sh
+
+. libtest.sh
+. libgit.sh
+
+steps '
+	:save-display ansi.screen
+	:save-view ansi.view
+'
+
+git_init
+
+# Input similar to what `git show --color=always` and `git diff
+# --color-words` produce, with string terminated control strings.
+stdin "$(printf '%b' \
+	'\033[33mcommit 1b4c64b595aeb4de1d317d669faacd3c1d82f0b0\033[m\n' \
+	'Author: Sven Wegener <sven.wegener@example.net>\n' \
+	'Date:   Sun Jul 2 15:01:24 2017 +0200\n' \
+	'\n' \
+	'    graph: Optimize initial and merge calculation\n' \
+	'\n' \
+	'\033[1mdiff --git a/src/graph-v2.c b/src/graph-v2.c\033[m\n' \
+	'\033[1mindex 4cf3d9e..ced6838 100644\033[m\n' \
+	'\033[1m--- a/src/graph-v2.c\033[m\n' \
+	'\033[1m+++ b/src/graph-v2.c\033[m\n' \
+	'\033[36m@@ -692,8 +695,8 @@\033[m \033[mgraph_generate_symbols(struct graph_v2 *graph)\033[m\n' \
+	' \n' \
+	' \t\tsymbol->commit            = (pos == graph->position);\n' \
+	'\033[31m-\033[m\033[31m\t\tsymbol->initial           = (commits_in_row(parents) < 1);\033[m\n' \
+	'\033[32m+\033[m\033[32m\t\tsymbol->initial           = initial;\033[m\n' \
+	'\t\tsymbol->merge             = \033[31m(commits_in_row(parents) > 1)\033[m\033[32mmerge\033[m;\n' \
+	'\033]8;;http://example.com\033\\ \t\tsymbol->continued_down\033]8;;\033\\    = continued_down(row, next_row, pos);\n' \
+	' \t\tsymbol->continued_up      = continued_down(prev_row, row, pos);\033[0K\n' \
+	' \033[?25h\033[38:2:255:0:0;1m\303\251\033\303\251\033[m\n')"
+
+test_tig
+
+assert_equals 'ansi.screen' <<EOF
+commit 1b4c64b595aeb4de1d317d669faacd3c1d82f0b0
+Author: Sven Wegener <sven.wegener@example.net>
+Date:   Sun Jul 2 15:01:24 2017 +0200
+
+    graph: Optimize initial and merge calculation
+
+diff --git a/src/graph-v2.c b/src/graph-v2.c
+index 4cf3d9e..ced6838 100644
+--- a/src/graph-v2.c
++++ b/src/graph-v2.c
+@@ -692,8 +695,8 @@ graph_generate_symbols(struct graph_v2 *graph)
+
+                symbol->commit            = (pos == graph->position);
+-                symbol->initial           = (commits_in_row(parents) < 1);
++                symbol->initial           = initial;
+                symbol->merge             = (commits_in_row(parents) > 1)merge;
+                symbol->continued_down    = continued_down(row, next_row, pos);
+                symbol->continued_up      = continued_down(prev_row, row, pos);
+ éé
+
+
+
+
+
+
+
+
+
+[pager] - line 1 of 19                                                      100%
+EOF
+
+assert_equals 'ansi.view' <<EOF
+View: pager
+Ref:
+Dimensions: height=28 width=80
+Position: offset=0 column=0 lineno=0
+line[  0] type=commit selected=1
+line[  0] cells=1 text=[commit 1b4c64b595aeb4de1d317d669faacd3c1d82f0b0]
+line[  1] type= selected=0
+line[  1] cells=1 text=[Author: Sven Wegener <sven.wegener@example.net>]
+line[  2] type= selected=0
+line[  2] cells=1 text=[Date:   Sun Jul 2 15:01:24 2017 +0200]
+line[  3] type=default selected=0
+line[  3] cells=1 text=[]
+line[  4] type=default selected=0
+line[  4] cells=1 text=[    graph: Optimize initial and merge calculation]
+line[  5] type=default selected=0
+line[  5] cells=1 text=[]
+line[  6] type=diff-header selected=0
+line[  6] cells=1 text=[diff --git a/src/graph-v2.c b/src/graph-v2.c]
+line[  7] type=diff-index selected=0
+line[  7] cells=1 text=[index 4cf3d9e..ced6838 100644]
+line[  8] type=diff-del-file selected=0
+line[  8] cells=1 text=[--- a/src/graph-v2.c]
+line[  9] type=diff-add-file selected=0
+line[  9] cells=1 text=[+++ b/src/graph-v2.c]
+line[ 10] type=diff-chunk selected=0
+line[ 10] cells=2 text=[@@ -692,8 +695,8 @@][ graph_generate_symbols(struct graph_v2 *graph)]
+line[ 11] type=default selected=0
+line[ 11] cells=1 text=[ ]
+line[ 12] type=default selected=0
+line[ 12] cells=1 text=[ 		symbol->commit            = (pos == graph->position);]
+line[ 13] type=diff-del selected=0
+line[ 13] cells=2 text=[-][		symbol->initial           = (commits_in_row(parents) < 1);]
+line[ 14] type=diff-add selected=0
+line[ 14] cells=2 text=[+][		symbol->initial           = initial;]
+line[ 15] type=default selected=0
+line[ 15] cells=4 text=[		symbol->merge             = ][(commits_in_row(parents) > 1)][merge][;]
+line[ 16] type=default selected=0
+line[ 16] cells=2 text=[ 		symbol->continued_down][    = continued_down(row, next_row, pos);]
+line[ 17] type=default selected=0
+line[ 17] cells=1 text=[ 		symbol->continued_up      = continued_down(prev_row, row, pos);]
+line[ 18] type=default selected=0
+line[ 18] cells=3 text=[ ][é][é]
+EOF
