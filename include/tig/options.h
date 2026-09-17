@@ -134,6 +134,7 @@ OPTION_INFO(DEFINE_OPTION_EXTERNS)
 
 #define LINE_NUMBER_COLUMN_OPTIONS(_) \
 	_(display,			bool,			VIEW_NO_FLAGS) \
+	_(file,				bool,			VIEW_NO_FLAGS) \
 	_(interval,			int,			VIEW_NO_FLAGS) \
 	_(width,			int,			VIEW_NO_FLAGS) \
 

@@ -1117,6 +1117,33 @@ diff_common_select(struct view *view, struct line *line, const char *changes_msg
 	pager_select(view, line);
 }
 
+bool
+diff_get_column_data(struct view *view, const struct line *line, struct view_column_data *column_data)
+{
+	static unsigned long old_lineno, new_lineno;
+	struct view_column *column = get_view_column(view, VIEW_COLUMN_LINE_NUMBER);
+
+	if (!pager_get_column_data(view, line, column_data))
+		return false;
+
+	if (!column || !column->opt.line_number.file)
+		return true;
+
+	/* Line numbers in the old and the new file of lines in a diff
+	 * chunk. Removed lines only have the former and added lines only
+	 * the latter, headers and markers have none. */
+	old_lineno = new_lineno = 0;
+	if (line->type != LINE_DIFF_CHUNK) {
+		if (diff_line_has_old(line))
+			old_lineno = diff_get_lineno(view, (struct line *) line, true);
+		if (diff_line_has_new(line))
+			new_lineno = diff_get_lineno(view, (struct line *) line, false);
+	}
+
+	column_data->line_number = new_lineno ? &new_lineno : &old_lineno;
+	return true;
+}
+
 static void
 diff_select(struct view *view, struct line *line)
 {
@@ -1163,7 +1190,7 @@ static struct view_ops diff_ops = {
 	diff_select,
 	diff_done,
 	view_column_bit(LINE_NUMBER) | view_column_bit(TEXT),
-	pager_get_column_data,
+	diff_get_column_data,
 };
 
 DEFINE_VIEW(diff);

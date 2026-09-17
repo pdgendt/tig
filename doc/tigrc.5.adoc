@@ -574,6 +574,11 @@ id::
 
 line-number::
 	- 'display' (bool): Whether to show line numbers.
+	- 'file' (bool): Whether to show the line numbers of the file being
+	  diffed instead of those of the view, in the diff and stage views.
+	  Removed lines get their number in the old file, other lines in a
+	  diff chunk their number in the new file and lines outside of diff
+	  chunks none.
 	- 'interval' (int): Interval between line numbers.
 	- 'width' (int): Fixed width for the column. When set to zero, the width
 	  is automatically sized to fit the content.

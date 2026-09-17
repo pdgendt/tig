@@ -831,7 +831,7 @@ static struct view_ops stage_ops = {
 	stage_select,
 	NULL,
 	view_column_bit(LINE_NUMBER) | view_column_bit(TEXT),
-	pager_get_column_data,
+	diff_get_column_data,
 };
 
 DEFINE_VIEW(stage);
