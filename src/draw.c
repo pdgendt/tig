@@ -54,14 +54,16 @@ set_view_attr(struct view *view, enum line_type type)
 
 #define VIEW_MAX_LEN(view) ((view)->width + (view)->pos.col - (view)->col)
 
+/* Draw @string with the first @skip columns hidden, e.g. by horizontal
+ * scrolling. Both the hidden and the drawn columns advance the view
+ * column. */
 static bool
-draw_chars(struct view *view, enum line_type type, const char *string, int length,
-	   int max_width, bool use_tilde)
+draw_chars_skip(struct view *view, enum line_type type, const char *string, int length,
+		size_t skip, int max_width, bool use_tilde)
 {
 	int len = 0;
 	int col = 0;
 	int trimmed = false;
-	size_t skip = view->pos.col > view->col ? view->pos.col - view->col : 0;
 
 	if (max_width <= 0)
 		return VIEW_MAX_LEN(view) <= 0;
@@ -90,6 +92,15 @@ draw_chars(struct view *view, enum line_type type, const char *string, int lengt
 
 	view->col += col;
 	return VIEW_MAX_LEN(view) <= 0;
+}
+
+static bool
+draw_chars(struct view *view, enum line_type type, const char *string, int length,
+	   int max_width, bool use_tilde)
+{
+	size_t skip = view->pos.col > view->col ? view->pos.col - view->col : 0;
+
+	return draw_chars_skip(view, type, string, length, skip, max_width, use_tilde);
 }
 
 static bool
