@@ -97,7 +97,9 @@ app_diff_highlight_path_search(char *dest, size_t destlen, const char *query)
 struct app_external
 *app_diff_highlight_load(const char *query)
 {
-	static struct app_external dhlt_app = { { NULL }, { "GIT_CONFIG=/dev/null", NULL } };
+	/* Colors are rendered with the terminal palette, so tell the program
+	 * not to use true colors. */
+	static struct app_external dhlt_app = { { NULL }, { "GIT_CONFIG=/dev/null", "COLORTERM=", NULL } };
 	static bool did_search = false;
 	static char dhlt_query[SIZEOF_STR];
 	static char dhlt_cmd[SIZEOF_STR];
