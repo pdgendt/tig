@@ -295,6 +295,8 @@ The following variables can be set:
 	--color-only"`. ANSI colors and attributes emitted by the program are
 	rendered. Text for which the program sets colors is shown with those
 	colors, while text with only attributes keeps the colors of the line.
+	The program has no access to the terminal, so programs that detect
+	the terminal background by querying it fall back to their default.
 	The program is run with the `COLORTERM` environment variable cleared
 	since colors are rendered with the terminal palette; true colors
 	emitted anyway are approximated by the 256-color palette. Regions
