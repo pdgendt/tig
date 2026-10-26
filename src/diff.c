@@ -475,13 +475,15 @@ diff_save_line(struct view *view, struct diff_state *state, enum open_flags flag
 static bool
 diff_line_has_old(const struct line *line)
 {
-	return line->type != LINE_DIFF_ADD && line->type != LINE_DIFF_DEL2;
+	return line->type != LINE_DIFF_ADD && line->type != LINE_DIFF_DEL2 &&
+	       line->type != LINE_DIFF_NO_NEWLINE;
 }
 
 static bool
 diff_line_has_new(const struct line *line)
 {
-	return line->type != LINE_DIFF_DEL && line->type != LINE_DIFF_DEL2;
+	return line->type != LINE_DIFF_DEL && line->type != LINE_DIFF_DEL2 &&
+	       line->type != LINE_DIFF_NO_NEWLINE;
 }
 
 void
